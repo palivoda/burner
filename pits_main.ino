@@ -10,7 +10,7 @@ Scheduler scheduler;
 void setup() {
     
   //init serial
-  Serial.begin(57600);
+  Serial.begin(115200);
   Serial.println("Serial initialized...");
 
   //init i2c
