@@ -27,7 +27,7 @@ void setup() {
   }
   Serial.println("RTC initialized...");
 
-  burner.init(A5, A6, A7, A4, 6, 5);
+  burner.init(A0, A1, A2, A3, 2, 3);
   display.init();
 
 }
