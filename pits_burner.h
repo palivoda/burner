@@ -36,11 +36,11 @@ class PitsBurner
     int getCurrentTemp();
     void setExhaustTemp(int);  //to overwrite sensors value
     int getExhaustTemp();
+    void setFeederTemp(int);  //to overwrite sensors value
+    int getFeederTemp();
     void setFlame(int);        //to overwrite sensors value
     int getFlame();
     bool isFlame();
-    void setFeederTemp(int);   //to overwrite sensors value
-    int getFeederTemp();
     void setFeed(bool);
     bool getFeed();
     void setFan(int);
@@ -54,6 +54,7 @@ class PitsBurner
     void _switchMode();
     float _KTY81_110(float);
     float _LDR04(float);
+    float _getInternalTemp();
 
     //pins
     int _pinTBoiler = 0;
@@ -86,11 +87,11 @@ class PitsBurner
     int _intFeedTimeIdelS = 5;
     int _intFeedDelayIdleS = 120;
     int _intFanIgnitionP = 20;
-    int _intFanHeatP = 50;
-    int _intFanIdleP = 35;
+    int _intFanHeatP = 100;
+    int _intFanIdleP = 70;
     int _intFanIdleWorkS = 20;
 
-    PitsBurnerMode _currentMode = MODE_IDLE;
+    PitsBurnerMode _currentMode = MODE_STOP;
 };
 
 #endif

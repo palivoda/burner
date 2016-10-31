@@ -44,7 +44,7 @@ void PitsBurner::init(int pinTBoiler, int pinTExhaust, int pinFlameSensor, int p
   
   _pinFeeder = pinFeeder;
   pinMode(_pinFeeder, OUTPUT);
-  digitalWrite(_pinFeeder, HIGH);
+  digitalWrite(_pinFeeder, LOW);
   Serial.print(", pinFeeder=");
   Serial.print(_pinFeeder);
   
@@ -65,11 +65,24 @@ void PitsBurner::onOperate() {
 
 void PitsBurner::_readSensors() {
 
+  //pinMode(_pinFlameSensor, INPUT);
   setFlame(_LDR04(analogRead(_pinFlameSensor)));
-  setFeederTemp(_KTY81_110(analogRead(_intFeederTemp)));
+  //pinMode(_pinTBoiler, INPUT);
   setCurrentTemp(_KTY81_110(analogRead(_pinTBoiler)));
+  //pinMode(_pinTExhaust, INPUT);
   setExhaustTemp(_KTY81_110(analogRead(_pinTExhaust)));
-  Serial.println(String("PitsBurner - ReadSensors: CurrT=") + getCurrentTemp() + " ->" + getRequiredTemp() + ", Flame=" + getFlame() + ", ExhaT=" + getExhaustTemp() + ", FeedT=" + getFeederTemp());
+  //pinMode(_intFeederTemp, INPUT);
+  setFeederTemp(_KTY81_110(analogRead(_intFeederTemp)));
+
+  
+  Serial.println(String("PitsBurner - ReadSensors: ") + 
+    "CurrT=" + getCurrentTemp() + "C (" + (float(analogRead(_pinTBoiler)) / 1024 * 5) + "V) " + 
+    "->" + getRequiredTemp() + "C, " + 
+    "ExhaT=" + getExhaustTemp() + " (" + (float(analogRead(_pinTExhaust)) / 1024 * 5) + "V), " +  
+    "Flame=" + getFlame() + "% (" + (float(analogRead(_pinFlameSensor)) / 1024 * 5) + "V), " + 
+    "FeedT=" + getFeederTemp() + "C (" + (float(analogRead(_intFeederTemp)) / 1024 * 5) + "V), " + 
+    "CPUt=" + _getInternalTemp() + "C."
+    );
 }
 
 void PitsBurner::_switchMode() {
@@ -150,7 +163,7 @@ int PitsBurner::getExhaustTemp() {
 }
 
 void PitsBurner::setFlame(int t) {
-  Serial.println(String("PitsBurner - Flame: ") + _intFlame + " to " + t);
+  //Serial.println(String("PitsBurner - Flame: ") + _intFlame + " to " + t);
   _intFlame = t;
 }
 
@@ -288,15 +301,15 @@ DataSheet - http://www.tme.eu/ru/Document/63412cca845bf05e8bcce2eecca1aa6d/KTY81
 Codesample - http://electronics.stackexchange.com/questions/188813/strange-result-adcarduino-micro-thermistor-kty-10-6
 */                                
 float PitsBurner::_KTY81_110(float sensorValue) {
-  const int resistor = 970; //1k
+  const int resistor = 2200; //2k2
 
   // calculate sensor resistance value (Rkty)
   float Rkty = (resistor * sensorValue)/(1023 - sensorValue);
   // From the data sheet the value of the resistance of the sensor @ 25 degrees is 1000 +/- 20 ohmsStart with calculating the measured resistance.
   float R25 = 990;
   //we are also given alpha and beta
-  float alpha = 0.00788; //7.88/1000
-  float beta = 0.0001937; //1.937/10000 
+  float alpha = 7.88/1000;
+  float beta = 1.937/10000; 
   //Now we need to calculate the temperature factor (KayTee)
   float KayTee = Rkty/R25 ;
   //We now have all the information to calculate the actual temperature (AcT)
@@ -316,5 +329,35 @@ float PitsBurner::_LDR04(float sensorValue) {
   return lux * 100;
 }
 
+float PitsBurner::_getInternalTemp()
+{
+  unsigned int wADC;
+  float t;
+
+  // The internal temperature has to be used
+  // with the internal reference of 1.1V.
+  // Channel 8 can not be selected with
+  // the analogRead function yet.
+
+  // Set the internal reference and mux.
+  ADMUX = (_BV(REFS1) | _BV(REFS0) | _BV(MUX3));
+  ADCSRA |= _BV(ADEN);  // enable the ADC
+
+  delay(20);            // wait for voltages to become stable.
+
+  ADCSRA |= _BV(ADSC);  // Start the ADC
+
+  // Detect end-of-conversion
+  while (bit_is_set(ADCSRA,ADSC));
+
+  // Reading register "ADCW" takes care of how to read ADCL and ADCH.
+  wADC = ADCW;
+
+  // The offset of 324.31 could be wrong. It is just an indication.
+  t = (wADC - 324.31 ) / 1.22;
+
+  // The returned temperature is in degrees Celsius.
+  return (t);
+}
 
 
