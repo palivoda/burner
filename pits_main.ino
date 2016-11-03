@@ -7,99 +7,6 @@
 RTC_DS3231 rtc;
 Scheduler scheduler;
 
-void setup() {
-    
-  //init serial
-  Serial.begin(115200);
-  Serial.println("Serial initialized...");
-
-  //init i2c
-  Wire.begin();
-
-  //init RTC with time from PC on compilation
-  if (! rtc.begin()) {
-    Serial.println("Couldn't find RTC");
-    while (1);
-  }
-  if (rtc.lostPower()) {
-    Serial.println("RTC lost power, lets set the time!");
-    rtc.adjust(DateTime(F(__DATE__), F(__TIME__)));
-  }
-  Serial.println("RTC initialized...");
-
-  // Set timer 3 pins 3,11 to 31 Hz (31250/1024 = 31) for MOSFET control
-  setPwmFrequency(3, 1024);
-  setPwmFrequency(11, 1024);
-   
-  burner.init(A0, A1, A3, A2, 3, 11); //TBoiler, TExhaust, FlameSensor, TFeeder, Fan, Feeder
-  display.init();
-
-}
-
-void loop() {
-
-  // send data only when you receive data:
-  if (Serial.available() > 0) {
-      String incomingCommand = Serial.readString();
-      if (incomingCommand.startsWith("TEMP=")) {                       //TEMP - set required boiler temperature
-        incomingCommand.remove(0,4);
-        burner.setRequiredTemp(incomingCommand.toInt());
-      }
-      else if (incomingCommand.startsWith("FEED_HEAT=")) {             //FEED_HEAT - set feed time (seconds) in heat mode
-      }
-      else if (incomingCommand.startsWith("FEED_DELAY_HEAT=")) {       //FEED_DELAY_HEAT - set feed delay (seconds) in heat mode
-      }
-      else if (incomingCommand.startsWith("FEED_IDLE=")) {             //FEED_IDLE - set feed time (seconds) in idle mode
-      }
-      else if (incomingCommand.startsWith("FEED_DELAY_IDLE=")) {       //FEED_DELAY_IDLE - set feed delay (seconds) in idle mode
-      }
-      else if (incomingCommand.startsWith("FAN_HEAT=")) {              //FAN_HEAT - set fan power (%) in heat mode
-      }
-      else if (incomingCommand.startsWith("FAN_IDLE=")) {              //FAN_IDLE - set fan power (%) in idle mode
-      }
-      else if (incomingCommand.startsWith("BOILER=")) {                //BOILER - overwrite current boiler temberature readings (service mode)
-        incomingCommand.remove(0,4);
-        burner.setCurrentTemp(incomingCommand.toInt());
-      }
-      else if (incomingCommand.startsWith("EXHAUST=")) {               //EXHAUST - overwrite current exhaust temberature readings (service mode)
-        incomingCommand.remove(0,4);
-        burner.setExhaustTemp(incomingCommand.toInt());
-      }
-      else if (incomingCommand.startsWith("FLAME=")) {                 //FLAME - overwrite flame detection flag readings (service mode)
-        incomingCommand.remove(0,4);
-        burner.setFlame(incomingCommand.toInt());
-      }
-      else if (incomingCommand.startsWith("FEED=")) {                  //FEED - overwrite feeder On=1 or Off=0
-        incomingCommand.remove(0,4);
-        burner.setFeed((bool)incomingCommand.toInt());
-        burner.onFeed();
-      }
-      else if (incomingCommand.startsWith("STOP")) {                  //set mode: STOP
-        burner.setCurrentMode(MODE_STOP);
-      }
-      else if (incomingCommand.startsWith("IGNITE")) {                //set mode: IGNITE
-        burner.setCurrentMode(MODE_IGNITION);
-      }
-      else if (incomingCommand.startsWith("HEAT")) {                  //set mode: HEAT
-        burner.setCurrentMode(MODE_HEAT);
-      }
-      else if (incomingCommand.startsWith("IDLE")) {                  //mode overwrite: IDLE
-        burner.setCurrentMode(MODE_IDLE);
-      }
-      else if (incomingCommand.startsWith("ALARM")) {                 //mode overwrite: ALARM
-        burner.setCurrentMode(MODE_ALARM);
-      }
-      else if (incomingCommand.startsWith("CLEAN")) {                 //mode overwrite: CLEANING
-        burner.setCurrentMode(MODE_CLEANING);
-      }
-      else {
-        Serial.print("Unrecognized command: " + incomingCommand);
-      }
-  }
-  
-  scheduler.execute();
-}
-
 /**
  * Divides a given PWM pin frequency by a divisor.
  * 
@@ -162,4 +69,103 @@ void setPwmFrequency(int pin, int divisor) {
     TCCR2B = TCCR2B & 0b11111000 | mode;
   }
 }
+
+void setup() {
+    
+  //init serial
+  Serial.begin(115200);
+  Serial.println("Serial initialized...");
+
+  //init i2c
+  Wire.begin();
+
+  //init RTC with time from PC on compilation
+  if (! rtc.begin()) {
+    Serial.println("Couldn't find RTC");
+    while (1);
+  }
+  if (rtc.lostPower()) {
+    Serial.println("RTC lost power, lets set the time!");
+    rtc.adjust(DateTime(F(__DATE__), F(__TIME__)));
+  }
+  Serial.println("RTC initialized...");
+
+  // Set timer 3 pins 3,11 to 31 Hz (31250/1024 = 31) for MOSFET control
+  setPwmFrequency(3, 1024);
+  setPwmFrequency(11, 1024);
+   
+  burner.init(A0, A1, A2, A3, 3, 11); //TBoiler, TExhaust, FlameSensor, TFeeder, Fan, Feeder
+  display.init();
+
+}
+
+void loop() {
+
+  // send data only when you receive data:
+  if (Serial.available() > 0) {
+      String incomingCommand = Serial.readString();
+      if (incomingCommand.startsWith("TEMP=")) {                       //TEMP - set required boiler temperature
+        incomingCommand.remove(0,4);
+        burner.setRequiredTemp(incomingCommand.toInt());
+      }
+      else if (incomingCommand.startsWith("FEED_HEAT=")) {             //FEED_HEAT - set feed time (seconds) in heat mode
+      }
+      else if (incomingCommand.startsWith("FEED_DELAY_HEAT=")) {       //FEED_DELAY_HEAT - set feed delay (seconds) in heat mode
+      }
+      else if (incomingCommand.startsWith("FEED_IDLE=")) {             //FEED_IDLE - set feed time (seconds) in idle mode
+      }
+      else if (incomingCommand.startsWith("FEED_DELAY_IDLE=")) {       //FEED_DELAY_IDLE - set feed delay (seconds) in idle mode
+      }
+      else if (incomingCommand.startsWith("FAN_HEAT=")) {              //FAN_HEAT - set fan power (%) in heat mode
+      }
+      else if (incomingCommand.startsWith("FAN_IDLE=")) {              //FAN_IDLE - set fan power (%) in idle mode
+      }
+      else if (incomingCommand.startsWith("BOILER=")) {                //BOILER - overwrite current boiler temberature readings (service mode)
+        incomingCommand.remove(0,7);
+        burner.setCurrentTemp(incomingCommand.toInt());
+      }
+      else if (incomingCommand.startsWith("EXHAUST=")) {               //EXHAUST - overwrite current exhaust temberature readings (service mode)
+        incomingCommand.remove(0,8);
+        burner.setExhaustTemp(incomingCommand.toInt());
+      }
+      else if (incomingCommand.startsWith("FLAME=")) {                 //FLAME - overwrite flame detection flag readings (service mode)
+        incomingCommand.remove(0,5);
+        burner.setFlame(incomingCommand.toInt());
+      }
+      else if (incomingCommand.startsWith("FEED=")) {                  //FEED - overwrite feeder to speed 0-100
+        incomingCommand.remove(0,5);
+        burner.setFeed(incomingCommand.toInt());
+      }
+      else if (incomingCommand.startsWith("FAN=")) {                  //FEED - overwrite fan to speed 0-100
+        incomingCommand.remove(0,4);
+        burner.setFan(incomingCommand.toInt());
+      }
+      else if (incomingCommand.startsWith("MANUAL") || 
+               incomingCommand.startsWith("STOP")) {                  //set mode: MANUAL
+        burner.setCurrentMode(MODE_MANUAL);
+      }
+      else if (incomingCommand.startsWith("IGNITE")) {                //set mode: IGNITE
+        burner.setCurrentMode(MODE_IGNITION);
+      }
+      else if (incomingCommand.startsWith("HEAT")) {                  //set mode: HEAT
+        burner.setCurrentMode(MODE_HEAT);
+      }
+      else if (incomingCommand.startsWith("IDLE")) {                  //mode overwrite: IDLE
+        burner.setCurrentMode(MODE_IDLE);
+      }
+      else if (incomingCommand.startsWith("ALARM")) {                 //mode overwrite: ALARM
+        burner.setCurrentMode(MODE_ALARM);
+      }
+      else if (incomingCommand.startsWith("CLEAN")) {                 //mode overwrite: CLEANING
+        burner.setCurrentMode(MODE_CLEANING);
+      }
+      else {
+        Serial.print("Unrecognized command: " + incomingCommand);
+      }
+  }
+  
+  scheduler.execute();
+}
+
+
 

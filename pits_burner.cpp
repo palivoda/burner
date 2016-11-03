@@ -4,9 +4,9 @@
 
 PitsBurner burner;
 
-Task tOperate(1*TASK_SECOND, TASK_FOREVER, &PitsBurner::onOperate, &scheduler, true);
-Task tFeed(1*TASK_SECOND, TASK_FOREVER, &PitsBurner::onFeed, &scheduler, true);
-Task tFan(1*TASK_SECOND, TASK_FOREVER, &PitsBurner::onFan, &scheduler, true);
+Task tOperate(5*TASK_SECOND, TASK_FOREVER, &PitsBurner::onOperate, &scheduler, true);
+Task tFeed(5*TASK_SECOND, TASK_FOREVER, &PitsBurner::onFeed, &scheduler, true);
+Task tFan(5*TASK_SECOND, TASK_FOREVER, &PitsBurner::onFan, &scheduler, true);
 
 PitsBurner::PitsBurner() {
   return;
@@ -47,7 +47,7 @@ void PitsBurner::init(int pinTBoiler, int pinTExhaust, int pinFlameSensor, int p
   digitalWrite(_pinFeeder, LOW);
   Serial.print(", pinFeeder=");
   Serial.print(_pinFeeder);
-  
+
   Serial.println(". Initiated.");
 
 }
@@ -68,11 +68,11 @@ void PitsBurner::_readSensors() {
   //pinMode(_pinFlameSensor, INPUT);
   setFlame(_LDR04(analogRead(_pinFlameSensor)));
   //pinMode(_pinTBoiler, INPUT);
-  setCurrentTemp(_KTY81_110(analogRead(_pinTBoiler)));
+  setCurrentTemp(_KTY81_210(analogRead(_pinTBoiler)));
   //pinMode(_pinTExhaust, INPUT);
-  setExhaustTemp(_KTY81_110(analogRead(_pinTExhaust)));
+  setExhaustTemp(_KTY81_210(analogRead(_pinTExhaust)));
   //pinMode(_intFeederTemp, INPUT);
-  setFeederTemp(_KTY81_110(analogRead(_intFeederTemp)));
+  setFeederTemp(_KTY81_210(analogRead(_pinTFeeder)));
 
   
   Serial.println(String("PitsBurner - ReadSensors: ") + 
@@ -80,18 +80,18 @@ void PitsBurner::_readSensors() {
     "->" + getRequiredTemp() + "C, " + 
     "ExhaT=" + getExhaustTemp() + " (" + (float(analogRead(_pinTExhaust)) / 1024 * 5) + "V), " +  
     "Flame=" + getFlame() + "% (" + (float(analogRead(_pinFlameSensor)) / 1024 * 5) + "V), " + 
-    "FeedT=" + getFeederTemp() + "C (" + (float(analogRead(_intFeederTemp)) / 1024 * 5) + "V), " + 
-    "CPUt=" + _getInternalTemp() + "C."
+    "FeedT=" + getFeederTemp() + "C (" + (float(analogRead(_pinTFeeder)) / 1024 * 5) + "V), " 
     );
 }
 
 void PitsBurner::_switchMode() {
 
-  //do nothing if stopped
-  if (_currentMode != MODE_STOP) return;
+  //do nothing if manual mode
+  if (_currentMode == MODE_MANUAL) return;
 
   //if temperature lower then minimum and not in ignition mode
-  if (_intCurrentTemp < _intMinTemp && _currentMode != MODE_IGNITION && _currentMode != MODE_ALARM) {
+  if (_intCurrentTemp < _intMinTemp && _currentMode != MODE_IGNITION && _currentMode != MODE_MANUAL && _currentMode != MODE_ALARM) {
+    Serial.println(String("PitsBurner - SwitchMode - ALARM - because of minimum temperature")); 
     setCurrentMode(MODE_ALARM);
   }
 
@@ -100,22 +100,24 @@ void PitsBurner::_switchMode() {
   //if ignition and no flame for 15 minutes then alarm
 
   //if under required temperature then heat
-  if (_intCurrentTemp - _intRequiredTemp < -_intHysteresisTemp && _currentMode == MODE_IDLE) {
+  if (_intCurrentTemp < (_intRequiredTemp  - _intHysteresisTemp)  && _currentMode == MODE_IDLE) {
+    Serial.println(String("PitsBurner - SwitchMode - HEAT")); 
     setCurrentMode(MODE_HEAT);
   }
 
 
-  //if exhaust temperature more then  boiler temperature + allowed delta then idle
-  //option: if exhaust sensor exists
-  if (_intExhaustTemp > 0 && _intExhaustTemp - _intCurrentTemp > _intExhDeltaTemp && _currentMode == MODE_HEAT) {
-    setCurrentMode(MODE_IDLE);
-  }
+  //if exhaust sensor exists, if exhaust temperature more then  boiler temperature + allowed delta then idle
+  //if (_intExhaustTemp > 0 && (_intExhaustTemp + _intExhDeltaTemp)  > _intCurrentTemp && _currentMode == MODE_HEAT) {
+  //  Serial.println(String("PitsBurner - SwitchMode - IDLE because exhaust temperature")); 
+  //  setCurrentMode(MODE_IDLE);
+  //}
 
   //if under equired temperature during 1 hour then alarm
 
 
   //if heating and reached requied temperature then idle
-  if (_intCurrentTemp - _intRequiredTemp > _intHysteresisTemp && _currentMode == MODE_HEAT) {
+  if (_intCurrentTemp > (_intRequiredTemp + _intHysteresisTemp)  && _currentMode == MODE_HEAT) {
+    Serial.println(String("PitsBurner - SwitchMode - IDLE - temperature reached")); 
     setCurrentMode(MODE_IDLE);
   }
 
@@ -123,6 +125,7 @@ void PitsBurner::_switchMode() {
   
   //if overheating then alarm
   if (_intCurrentTemp > _intMaxTemp && _currentMode != MODE_ALARM) {
+    Serial.println(String("PitsBurner - SwitchMode - ALARM - overheat")); 
     setCurrentMode(MODE_ALARM);
   }
 
@@ -191,19 +194,17 @@ PitsBurnerMode PitsBurner::getCurrentMode() {
 }
 
 bool PitsBurner::setCurrentMode(PitsBurnerMode mode) {
-  if (_currentMode != mode) {
-    Serial.println(String("PitsBurner - Mode: ") + _currentMode + " to " + mode);
-    _currentMode = mode;
-    _isFeed = false;
-    _intFan = 0;
-    tFeed.restart();
-    tFan.restart();
-  }
+  Serial.println(String("PitsBurner - Mode: ") + _currentMode + " to " + mode);
+  _currentMode = mode;
+  setFeed(LOW); 
+  setFan(LOW);
+  tFeed.restart();
+  tFan.restart();
 }
 
 //http://bildr.org/2012/03/rfp30n06le-arduino/
 void PitsBurner::setFan(int percent) {
-  _intFan = int((float(percent) / 100) * 255);
+  burner._intFan = (int)((float(percent) / 100.0) * 255.0);
   analogWrite(_pinFan, burner._intFan); 
   Serial.println("PitsBurner: Fan is at " + String(percent) + "% = " + String(_intFan) + " PWM");
 }
@@ -212,152 +213,192 @@ int PitsBurner::getFan() {
   return int(float(_intFan) / 255 * 100);
 }
 
+bool PitsBurner::isFan() {
+  return _intFan != LOW;
+}
+
+
 void PitsBurner::onFan() {
   Serial.print("PitsBurner - OnFan: ");
 
-  long intrval;
+  long interval;
   int percent;
+  bool change = true;
   
   switch (burner._currentMode) {
+    
+    case MODE_MANUAL:
+      Serial.print(" ignoring event in MODE_MANUAL, timer sleep 15s.");
+      tFan.setInterval(15*TASK_SECOND);
+      change = false;
+      break;
+      
     case MODE_IGNITION:
-      intrval = (burner._intFeedDelayIgnitionS + burner._intFeedTimeIgnitionS) * TASK_SECOND;
-      percent = burner._intFanIgnitionP;
       Serial.print("in IGNITION ");
-      break;
-    case MODE_HEAT:
-      intrval = (burner._intFeedDelayHeatS + burner._intFeedTimeHeatS) * TASK_SECOND;
-      percent = burner._intFanHeatP;
-      Serial.print("in HEAT ");
-      break;
-    case MODE_IDLE:
-      if (burner._isFeed) {
-        intrval = burner._intFanIdleWorkS * TASK_SECOND;
-        percent = burner._intFanIdleP;
+      if (burner.isFan()) {
+        interval = burner._intFeedIgnitionDelayS * TASK_SECOND; //sync to feed time
+        percent = 15; //15%
+        Serial.print("turn OFF ");
       }
       else {
-        intrval = (burner._intFeedTimeIdelS  + burner._intFeedDelayIdleS - burner._intFanIdleWorkS) * TASK_SECOND;
-        percent = 0;
+        interval = burner._intFeedIgnitionWorkS * TASK_SECOND; //sync to feed time
+        percent = burner._intFanIgnitionP;
+        Serial.print("turn ON ");
       }
       break;
-    default: //in other modes no feed at all
-      intrval = 60 * TASK_SECOND; 
-      percent = 0;
+      
+    case MODE_HEAT:
+      Serial.print("in HEAT ");
+      interval = (burner._intFeedHeatWorkS + burner._intFeedHeatDelayS) * TASK_SECOND; //sync to feed time
+      percent = burner._intFanHeatP; //work all time
+      Serial.print("turn ON ");
+      break;
+      
+    case MODE_IDLE:
+      Serial.print("in IDLE ");
+      if (burner.isFan()) {
+        interval = burner._intFeedIdleDelayS * TASK_SECOND; //sync to feed time
+        percent = 10; //LOW;
+        Serial.print("turn OFF ");
+      }
+      else {
+        interval = burner._intFeedIdleWorkS* TASK_SECOND; //sync to feed time
+        percent = burner._intFanIdleP;
+        Serial.print("turn ON ");
+      }
+      break;
+      
+    default: //in OTHER mode turn feed off
+      Serial.print("in OTHER  ");
+      interval = 60 * TASK_SECOND; 
+      percent = LOW;
       break;
   }
 
-  Serial.print("during " + String(intrval / TASK_SECOND) + " seconds ");
-  tFan.setInterval(intrval);
-  
-  burner.setFan(percent);
+  tFan.setInterval(interval);
+  if (change) {
+    Serial.print("during " + String(interval / TASK_SECOND) + " seconds ");
+    burner.setFan(percent);
+  }
+  else {
+    Serial.println();
+  }
 }
 
-void PitsBurner::setFeed(bool f) {
-  _isFeed = f;
-  digitalWrite(_pinFeeder, _isFeed ? HIGH : LOW);
-  Serial.println("Feeder is " + String(_isFeed ? "ON" : "OFF"));
+void PitsBurner::setFeed(int percent) {
+  _intFeeder = int((float(percent) / 100) * 255);
+  analogWrite(_pinFeeder, _intFeeder); 
+  Serial.println("PitsBurner: Feed is at " + String(percent) + "% = " + String(_intFeeder) + " PWM");
 }
 
-bool PitsBurner::getFeed() {
-  return _isFeed;
+int PitsBurner::getFeed() {
+  return _intFeeder;
+}
+
+bool PitsBurner::isFeed() {
+  return _intFeeder != LOW;
 }
 
 void PitsBurner::onFeed() {
   Serial.print("PitsBurner - OnFeed: ");
 
   long interval;
-  bool feed;
+  int feed;
+  bool change = true;
   
   switch (burner._currentMode) {
+    case MODE_MANUAL:
+      Serial.print(" ignoring event in MODE_MANUAL, timer sleep 15s.");
+      tFeed.setInterval(15*TASK_SECOND);
+      change = false;
+      break;
+      
     case MODE_IGNITION:
-      interval = burner.getFeed() ? burner._intFeedDelayIgnitionS * TASK_SECOND : burner._intFeedTimeIgnitionS * TASK_SECOND;
-      feed = !burner.getFeed();
       Serial.print("in IGNITION ");
+      if (burner.isFeed()) {
+        interval = burner._intFeedIgnitionDelayS * TASK_SECOND;
+        feed = LOW;
+      }
+      else {
+        interval = burner._intFeedIgnitionWorkS * TASK_SECOND;
+        feed = burner._intFeedIgnitionP;
+      }
       break;
+      
     case MODE_HEAT:
-      interval = burner.getFeed() ? burner._intFeedDelayHeatS * TASK_SECOND : burner._intFeedTimeHeatS * TASK_SECOND;
-      feed = !burner.getFeed();
       Serial.print("in HEAT ");
+      if (burner.isFeed()) {
+        interval = burner._intFeedHeatDelayS * TASK_SECOND;
+        feed = LOW;
+        Serial.print("feed OFF ");
+      }
+      else {
+        interval = burner._intFeedHeatWorkS * TASK_SECOND;
+        feed = burner._intFeedHeatP;
+        Serial.print("feed ON ");
+      }
       break;
+      
     case MODE_IDLE:
-      interval = burner.getFeed() ? burner._intFeedDelayIdleS * TASK_SECOND : burner._intFeedTimeIdelS * TASK_SECOND;
-      feed = !burner.getFeed();
       Serial.print("in IDLE ");
+      if (burner.isFeed()) {
+        interval = burner._intFeedIdleDelayS * TASK_SECOND;
+        feed = LOW;
+      }
+      else {
+        interval = burner._intFeedIdleWorkS * TASK_SECOND;
+        feed = burner._intFeedIdleP;
+      }
       break;
-    default: //in other modes no feed at all
-      interval = 60* TASK_SECOND; 
-      feed = false;
+      
+    default: //in OTHER modes no feed at all
+      Serial.print("in OTHER  ");
+      interval = 60 * TASK_SECOND; 
+      feed = LOW;
       break;
   }
   
-  Serial.print("during " + String(interval / TASK_SECOND) + " seconds ");
   tFeed.setInterval(interval);
+  if (change) {
+    Serial.print("during " + String(interval / TASK_SECOND) + " seconds ");
+    burner.setFeed(feed);
+  }
+  else {
+    Serial.println();
+  }
   
-  burner.setFeed(feed);
 }
 
 /*
-Converts termistor KTY81-110 analog readings to celsius.
+Converts termistor KTY81-210 analog readings to celsius.
 DataSheet - http://www.tme.eu/ru/Document/63412cca845bf05e8bcce2eecca1aa6d/KTY81-210.pdf
 Codesample - http://electronics.stackexchange.com/questions/188813/strange-result-adcarduino-micro-thermistor-kty-10-6
+Source - https://www.lemona.lv/?page=item&i_id=30742
 */                                
-float PitsBurner::_KTY81_110(float sensorValue) {
+float PitsBurner::_KTY81_210(float sensorValue) {
   const int resistor = 2200; //2k2
 
-  // calculate sensor resistance value (Rkty)
-  float Rkty = (resistor * sensorValue)/(1023 - sensorValue);
-  // From the data sheet the value of the resistance of the sensor @ 25 degrees is 1000 +/- 20 ohmsStart with calculating the measured resistance.
-  float R25 = 990;
-  //we are also given alpha and beta
-  float alpha = 7.88/1000;
-  float beta = 1.937/10000; 
-  //Now we need to calculate the temperature factor (KayTee)
-  float KayTee = Rkty/R25 ;
-  //We now have all the information to calculate the actual temperature (AcT)
-  return 25 + ((sqrt((alpha*alpha)-(4*beta)+(4*beta*KayTee)) - alpha)/(2*beta)) ;
-}
+  float ukty = 5 * sensorValue / 1023.0 ;
+  float a = 0.00001874*1000;
+  float b = 0.007884*1000;
+  float c = 1000 - resistor * ukty / (5 - ukty);
+  float delta = b * b - 4 * a * c;
+  float delta1 = sqrt (delta);
+  float x2 =(-b + delta1)/(2 * a);
+  float temp1 = x2 + 25;
+  return temp1;
+ }
 
 /*
-Converts photo resistor LDR04 analog readings to 2-20K percent.
+Converts photo resistor LDR04 analog readings to percent.
 DataSheet - http://www.velleman.eu/products/view/?country=be&lang=en&id=167303
-Codesample - https://arduinodiy.wordpress.com/2013/11/03/measuring-light-with-an-arduino/
 */
 float PitsBurner::_LDR04(float sensorValue) {
-  const int Res0 = 2200; //2k2
-  float Vout0=sensorValue*0.0048828125;      // calculate the voltage (one unit = 5v / 1024)
-  float lux = 500/(Res0*((5-Vout0)/Vout0));           // calculate the Lux
-  //Serial.println(lux);
-  return lux * 100;
-}
+  const int Res1 = 2200; // Resistor 1 value - 2k2 
 
-float PitsBurner::_getInternalTemp()
-{
-  unsigned int wADC;
-  float t;
-
-  // The internal temperature has to be used
-  // with the internal reference of 1.1V.
-  // Channel 8 can not be selected with
-  // the analogRead function yet.
-
-  // Set the internal reference and mux.
-  ADMUX = (_BV(REFS1) | _BV(REFS0) | _BV(MUX3));
-  ADCSRA |= _BV(ADEN);  // enable the ADC
-
-  delay(20);            // wait for voltages to become stable.
-
-  ADCSRA |= _BV(ADSC);  // Start the ADC
-
-  // Detect end-of-conversion
-  while (bit_is_set(ADCSRA,ADSC));
-
-  // Reading register "ADCW" takes care of how to read ADCL and ADCH.
-  wADC = ADCW;
-
-  // The offset of 324.31 could be wrong. It is just an indication.
-  t = (wADC - 324.31 ) / 1.22;
-
-  // The returned temperature is in degrees Celsius.
-  return (t);
+  float Vout1 = sensorValue * (5.0/1024.0);      // calculate Voltage 1 (one unit = 5v / 1024)
+  float Res2 = ((5.0  * Res1) / Vout1) - Res1;   // caclulate  Resistor 2
+  return (Res2 / (Res1 + Res2)) * 100;
 }
 
 

@@ -13,13 +13,14 @@ class PitsBurner;
 extern PitsBurner burner;
 
 enum PitsBurnerMode {
-  MODE_STOP,
+  MODE_MANUAL,
   MODE_IGNITION,
   MODE_HEAT,
   MODE_IDLE,
   MODE_CLEANING,
   MODE_ALARM
 };
+
 
 class PitsBurner
 {
@@ -41,10 +42,12 @@ class PitsBurner
     void setFlame(int);        //to overwrite sensors value
     int getFlame();
     bool isFlame();
-    void setFeed(bool);
-    bool getFeed();
+    void setFeed(int);
+    int getFeed();
+    bool isFeed();
     void setFan(int);
     int getFan();
+    bool isFan();
 
     PitsBurnerMode getCurrentMode();
     bool setCurrentMode(PitsBurnerMode);
@@ -52,9 +55,8 @@ class PitsBurner
   private:
     void _readSensors();
     void _switchMode();
-    float _KTY81_110(float);
+    float _KTY81_210(float);
     float _LDR04(float);
-    float _getInternalTemp();
 
     //pins
     int _pinTBoiler = 0;
@@ -64,34 +66,40 @@ class PitsBurner
     int _pinFan = 0;
     int _pinFeeder = 0;
 
-    //read values: sensors, object state
-    int _intCurrentTemp = 70;
-    int _intExhaustTemp = 110;
-    int _intFeederTemp = 23;
+    //read values
+    int _intCurrentTemp = 0;
+    int _intExhaustTemp = 0;
+    int _intFeederTemp = 0;
     int _intFlame = 0;
-    bool _isFeed = false;
-    int _intFan = 0;
+    
+    //object state
+    int _intFeeder = LOW;
+    int _intFan = LOW;
     
     //service settings
-    int _intMaxTemp = 90;
-    int _intMinTemp = 40;
+    int _intMaxTemp = 95;
+    int _intMinTemp = 15;
 
     //user settings
-    int _intRequiredTemp = 70;
+    int _intRequiredTemp = 85;
     int _intHysteresisTemp = 2;
     int _intExhDeltaTemp = 40;
-    int _intFeedTimeIgnitionS = 30;
-    int _intFeedDelayIgnitionS = 240;
-    int _intFeedTimeHeatS = 30;
-    int _intFeedDelayHeatS = 35;
-    int _intFeedTimeIdelS = 5;
-    int _intFeedDelayIdleS = 120;
-    int _intFanIgnitionP = 20;
-    int _intFanHeatP = 100;
-    int _intFanIdleP = 70;
+    
+    int _intFeedIgnitionP = 60;
+    int _intFeedIgnitionWorkS = 30;
+    int _intFeedIgnitionDelayS= 240;
+    int _intFeedHeatWorkS = 3;
+    int _intFeedHeatDelayS = 10;
+    int _intFeedIdleWorkS = 5;
+    int _intFeedIdleDelayS = 120;
+    int _intFeedHeatP = 60;
+    int _intFeedIdleP = 60;
+    int _intFanIgnitionP = 40;
+    int _intFanHeatP = 60;
+    int _intFanIdleP = 25;
     int _intFanIdleWorkS = 20;
 
-    PitsBurnerMode _currentMode = MODE_STOP;
+    PitsBurnerMode _currentMode = MODE_IDLE;
 };
 
 #endif

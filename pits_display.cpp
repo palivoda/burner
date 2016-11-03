@@ -69,10 +69,16 @@ void PitsDisplay::refresh() {
   oled.putNumber(burner.getExhaustTemp());
   oled.setTextXY(3,0);
 
+  //Sensor Value
+  oled.setTextXY(2,8);
+  oled.putNumber(burner.getFlame());
+  oled.setTextXY(2,burner.getFlame() > 9 ? 10 : 9);
+  oled.putString("% ");
+
   //Mode
   oled.setTextXY(7,4); 
   switch (burner.getCurrentMode()) {
-    case MODE_STOP: oled.putString("S"); break;
+    case MODE_MANUAL: oled.putString("M"); break;
     case MODE_IGNITION: oled.putString("I"); break;
     case MODE_HEAT: oled.putString("H"); break;
     case MODE_IDLE: oled.putString("W"); break;
