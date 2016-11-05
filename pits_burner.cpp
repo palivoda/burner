@@ -364,15 +364,26 @@ void PitsBurner::onFeed() {
   }
   
   tFeed.setInterval(interval);
+  
   if (change) {
     Serial.print("during " + String(interval / TASK_SECOND) + " seconds ");
     burner.setFeed(feed);
+
+    //log total feed seconds
+    if (feed != LOW) {
+      burner._intFeedTime += (interval / TASK_SECOND);
+    }
   }
   else {
     Serial.println();
   }
   
 }
+
+int PitsBurner::getFeedTime() {
+  return _intFeedTime;
+}
+
 
 /*
 Converts termistor KTY81-210 analog readings to celsius.

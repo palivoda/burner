@@ -49,6 +49,7 @@ class PitsBurner
     void setFan(int);
     int getFan();
     bool isFan();
+    int getFeedTime();
 
     PitsBurnerMode getCurrentMode();
     bool setCurrentMode(PitsBurnerMode);
@@ -74,8 +75,10 @@ class PitsBurner
     int _intFlame = 0;
     
     //object state
+    int _intFeedTime = 0;
     int _intFeeder = LOW;
     int _intFan = LOW;
+    PitsBurnerMode _currentMode = MODE_IDLE;
     
     //service settings
     int _intMaxTemp = 95;
@@ -95,14 +98,13 @@ class PitsBurner
     int _intFeedIdleDelayS = 90;
     int _intFeedHeatP = 60;
     int _intFeedIdleP = 60;
+
     int _intFanIgnitionP = 40;
     int _intFanHeatP = 60;
     int _intFanIdleWorkP = 35; //should be strong enougth to start fan, e.g > 25%
     int _intFanIdleWorkS = 5;
     int _intFanIdleOffP = 10; //never stop the fan in idle if smoke is blowing back without fan
     int _intFanCleanP = 80;
-
-    PitsBurnerMode _currentMode = MODE_IDLE;
 };
 
 #endif

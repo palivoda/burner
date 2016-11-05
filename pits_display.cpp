@@ -93,6 +93,10 @@ void PitsDisplay::refresh() {
   oled.setTextXY(3,burner.getFeed() > 9 ? 10 : 9);
   oled.putString("% ");
 
+  //Feed time
+  oled.setTextXY(3,13);
+  oled.putNumber(burner.getFeedTime());
+
   //Mode
   oled.setTextXY(7,4); 
   switch (burner.getCurrentMode()) {
@@ -122,7 +126,6 @@ void PitsDisplay::refresh() {
   oled.setTextXY(7,2); 
   if (burner.getFeed()) oled.drawBitmap((unsigned char*) (display._animationFrame ? ICON_FEEDER1 : ICON_FEEDER2) ,8);
   else oled.putString(" ");
-  
 
   //Real time
   DateTime now = rtc.now();
