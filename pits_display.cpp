@@ -69,10 +69,28 @@ void PitsDisplay::refresh() {
   oled.putNumber(burner.getExhaustTemp());
   oled.setTextXY(3,0);
 
-  //Sensor Value
-  oled.setTextXY(2,8);
+  //Flame sensor Value
+  oled.setTextXY(2,0);
+  oled.putString("Fm");
+  oled.setTextXY(3,0);
   oled.putNumber(burner.getFlame());
-  oled.setTextXY(2,burner.getFlame() > 9 ? 10 : 9);
+  oled.setTextXY(3,burner.getFlame() > 9 ? 2 : 1);
+  oled.putString("% ");
+
+  //Fan % Value
+  oled.setTextXY(2,4);
+  oled.putString("Fn");
+  oled.setTextXY(3,4);
+  oled.putNumber(burner.getFan());
+  oled.setTextXY(3,burner.getFan() > 9 ? 6 : 5);
+  oled.putString("% ");
+
+  //Feed % Value
+  oled.setTextXY(2,8);
+  oled.putString("Fd");
+  oled.setTextXY(3,8);
+  oled.putNumber(burner.getFeed());
+  oled.setTextXY(3,burner.getFeed() > 9 ? 10 : 9);
   oled.putString("% ");
 
   //Mode

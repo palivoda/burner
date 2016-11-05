@@ -258,15 +258,20 @@ void PitsBurner::onFan() {
       Serial.print("in IDLE ");
       if (burner.isFan()) {
         interval = burner._intFeedIdleDelayS * TASK_SECOND; //sync to feed time
-        percent = 10; //LOW;
+        percent = burner._intFanIdleOffP; //LOW;
         Serial.print("turn OFF ");
       }
       else {
         interval = burner._intFeedIdleWorkS* TASK_SECOND; //sync to feed time
-        percent = burner._intFanIdleP;
+        percent = burner._intFanIdleWorkP;
         Serial.print("turn ON ");
       }
       break;
+
+    case MODE_CLEANING:
+        interval = 3 * TASK_SECOND; //recheck burner status
+        percent = burner._intFanCleanP;
+      
       
     default: //in OTHER mode turn feed off
       Serial.print("in OTHER  ");

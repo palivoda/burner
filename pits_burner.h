@@ -15,6 +15,7 @@ extern PitsBurner burner;
 enum PitsBurnerMode {
   MODE_MANUAL,
   MODE_IGNITION,
+  MODE_PREHEAT, //when main circulation turns on we expect temperature drop up to 10 degree
   MODE_HEAT,
   MODE_IDLE,
   MODE_CLEANING,
@@ -78,7 +79,7 @@ class PitsBurner
     
     //service settings
     int _intMaxTemp = 95;
-    int _intMinTemp = 15;
+    int _intMinTemp = 70;
 
     //user settings
     int _intRequiredTemp = 85;
@@ -88,16 +89,18 @@ class PitsBurner
     int _intFeedIgnitionP = 60;
     int _intFeedIgnitionWorkS = 30;
     int _intFeedIgnitionDelayS= 240;
-    int _intFeedHeatWorkS = 3;
-    int _intFeedHeatDelayS = 10;
-    int _intFeedIdleWorkS = 5;
-    int _intFeedIdleDelayS = 120;
+    int _intFeedHeatWorkS = 1;
+    int _intFeedHeatDelayS = 7;
+    int _intFeedIdleWorkS = 1;
+    int _intFeedIdleDelayS = 90;
     int _intFeedHeatP = 60;
     int _intFeedIdleP = 60;
     int _intFanIgnitionP = 40;
     int _intFanHeatP = 60;
-    int _intFanIdleP = 25;
-    int _intFanIdleWorkS = 20;
+    int _intFanIdleWorkP = 35; //should be strong enougth to start fan, e.g > 25%
+    int _intFanIdleWorkS = 5;
+    int _intFanIdleOffP = 10; //never stop the fan in idle if smoke is blowing back without fan
+    int _intFanCleanP = 80;
 
     PitsBurnerMode _currentMode = MODE_IDLE;
 };
