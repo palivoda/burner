@@ -7,12 +7,13 @@ PitsBurner burner;
 Task tOperate(5*TASK_SECOND, TASK_FOREVER, &PitsBurner::onOperate, &scheduler, true);
 Task tFeed(5*TASK_SECOND, TASK_FOREVER, &PitsBurner::onFeed, &scheduler, true);
 Task tFan(5*TASK_SECOND, TASK_FOREVER, &PitsBurner::onFan, &scheduler, true);
+Task tIgniter(1*TASK_SECOND, TASK_FOREVER, &PitsBurner::onIgnite, &scheduler, false);
 
 PitsBurner::PitsBurner() {
   return;
 }
 
-void PitsBurner::init(int pinTBoiler, int pinTExhaust, int pinFlameSensor, int pinTFeeder, int pinFan, int pinFeeder) {
+void PitsBurner::init(int pinTBoiler, int pinTExhaust, int pinFlameSensor, int pinTFeeder, int pinFan, int pinFeeder, int pinIgniter) {
 
   Serial.print("PitsBurner: ");
   
@@ -38,15 +39,22 @@ void PitsBurner::init(int pinTBoiler, int pinTExhaust, int pinFlameSensor, int p
 
   _pinFan = pinFan;
   pinMode(_pinFan, OUTPUT);
-  digitalWrite(_pinFan, LOW);
+  analogWrite(_pinFan, LOW);
   Serial.print(", _pinFan=");
   Serial.print(_pinFan);
   
   _pinFeeder = pinFeeder;
   pinMode(_pinFeeder, OUTPUT);
-  digitalWrite(_pinFeeder, LOW);
+  analogWrite(_pinFeeder, LOW);
   Serial.print(", pinFeeder=");
   Serial.print(_pinFeeder);
+
+  _pinIgniter = pinIgniter;
+  pinMode(_pinIgniter, OUTPUT);
+  digitalWrite(_pinIgniter, LOW);
+  Serial.print(", pinIgniter=");
+  Serial.print(_pinIgniter);
+  
 
   Serial.println(". Initiated.");
 
@@ -67,6 +75,8 @@ void PitsBurner::_readSensors() {
 
   //pinMode(_pinFlameSensor, INPUT);
   setFlame(_LDR04(analogRead(_pinFlameSensor)));
+  updateLastFlameStatus();
+  
   //pinMode(_pinTBoiler, INPUT);
   setCurrentTemp(_KTY81_210(analogRead(_pinTBoiler)));
   //pinMode(_pinTExhaust, INPUT);
@@ -80,7 +90,8 @@ void PitsBurner::_readSensors() {
     "->" + getRequiredTemp() + "C, " + 
     "ExhaT=" + getExhaustTemp() + " (" + (float(analogRead(_pinTExhaust)) / 1024 * 5) + "V), " +  
     "Flame=" + getFlame() + "% (" + (float(analogRead(_pinFlameSensor)) / 1024 * 5) + "V), " + 
-    "FeedT=" + getFeederTemp() + "C (" + (float(analogRead(_pinTFeeder)) / 1024 * 5) + "V), " 
+    "FeedT=" + getFeederTemp() + "C (" + (float(analogRead(_pinTFeeder)) / 1024 * 5) + "V), " +
+    "NoFlame=" + getSecondsWithoutFlame() + "s"
     );
 }
 
@@ -90,18 +101,34 @@ void PitsBurner::_switchMode() {
   if (_currentMode == MODE_MANUAL) return;
 
   //if temperature lower then minimum and not in ignition mode
-  if (_intCurrentTemp < _intMinTemp && _currentMode != MODE_IGNITION && _currentMode != MODE_MANUAL && _currentMode != MODE_ALARM) {
-    Serial.println(String("PitsBurner - SwitchMode - ALARM - because of minimum temperature")); 
+  if (_intCurrentTemp < _intMinTemp && _currentMode == MODE_HEAT) {
+    Serial.println(String("PitsBurner - SwitchMode - ALARM - current temperature ") + _intCurrentTemp + " drop under allowed minimum " + _intMinTemp + " during heat cycle"); 
     setCurrentMode(MODE_ALARM);
   }
 
-  //if no flame then ignite
+  //if no flame 3 minutes then switch to ignite
+  //TODO: do not feed on switch to ignition - there already a lot of pellets to ignite.
+  if (_currentMode == MODE_HEAT && getSecondsWithoutFlame() > 180) {
+    Serial.println(String("PitsBurner - SwitchMode - IGNITE - no flame"));
+    setCurrentMode(MODE_IGNITION);
+  }
 
-  //if ignition and no flame for 15 minutes then alarm
+  //if ignition and no flame for 9 minutes then alarm
+  if (_currentMode == MODE_IGNITION && getSecondsWithoutFlame() > 540) {
+    Serial.println(String("PitsBurner - SwitchMode - ALARM - flame timeout"));
+    setCurrentMode(MODE_ALARM);
+  }
+
+  //if ignition and is flame then switch to heat 
+  if (_currentMode == MODE_IGNITION && isFlame()) {
+    Serial.println(String("PitsBurner - SwitchMode - HEAT - see flame.")); 
+    setCurrentMode(MODE_HEAT);
+  }
+  
 
   //if under required temperature then heat
   if (_intCurrentTemp < (_intRequiredTemp  - _intHysteresisTemp)  && _currentMode == MODE_IDLE) {
-    Serial.println(String("PitsBurner - SwitchMode - HEAT")); 
+    Serial.println(String("PitsBurner - SwitchMode - HEAT - under required temperature.")); 
     setCurrentMode(MODE_HEAT);
   }
 
@@ -117,7 +144,7 @@ void PitsBurner::_switchMode() {
 
   //if heating and reached requied temperature then idle
   if (_intCurrentTemp > (_intRequiredTemp + _intHysteresisTemp)  && _currentMode == MODE_HEAT) {
-    Serial.println(String("PitsBurner - SwitchMode - IDLE - temperature reached")); 
+    Serial.println(String("PitsBurner - SwitchMode - IDLE - required temperature reached.")); 
     setCurrentMode(MODE_IDLE);
   }
 
@@ -170,12 +197,29 @@ void PitsBurner::setFlame(int t) {
   _intFlame = t;
 }
 
+void PitsBurner::updateLastFlameStatus() {
+  if (isFlame()) {
+    _longTimeWithoutFlame = 0;
+  } else if (_longTimeWithoutFlame == 0) {
+    _longTimeWithoutFlame = millis();
+  }
+}
+
+int PitsBurner::getSecondsWithoutFlame() {
+  if (_longTimeWithoutFlame == 0) return 0;
+
+  unsigned long timeWithoutFlameMillis = millis() - _longTimeWithoutFlame;
+  //NOT IMPLEMENTED 
+  //READ flame date and substract it from rtc.now to get minutes
+  return (int) (timeWithoutFlameMillis / 1000);
+}
+
 int PitsBurner::getFlame() {
   return _intFlame;
 }
 
 bool PitsBurner::isFlame() {
-  return _intFlame > 5; 
+  return _intFlame > _intFlameLevel; 
 }
 
 void PitsBurner::setFeederTemp(int t) {
@@ -196,10 +240,21 @@ PitsBurnerMode PitsBurner::getCurrentMode() {
 bool PitsBurner::setCurrentMode(PitsBurnerMode mode) {
   Serial.println(String("PitsBurner - Mode: ") + _currentMode + " to " + mode);
   _currentMode = mode;
+
+  //feeder
   setFeed(LOW); 
-  setFan(LOW);
   tFeed.restart();
+
+  //fan
+  setFan(LOW);
   tFan.restart();
+
+  //ignition
+  setIgnition(false);
+  if (MODE_IGNITION == mode) tIgniter.restart();
+  else tIgniter.disable();
+  
+  _intMinTemp = (MODE_HEAT == mode) ? _intCurrentTemp - _intMaxDropTemp : 0; 
 }
 
 //http://bildr.org/2012/03/rfp30n06le-arduino/
@@ -235,16 +290,9 @@ void PitsBurner::onFan() {
       
     case MODE_IGNITION:
       Serial.print("in IGNITION ");
-      if (burner.isFan()) {
-        interval = burner._intFeedIgnitionDelayS * TASK_SECOND; //sync to feed time
-        percent = 15; //15%
-        Serial.print("turn OFF ");
-      }
-      else {
-        interval = burner._intFeedIgnitionWorkS * TASK_SECOND; //sync to feed time
-        percent = burner._intFanIgnitionP;
-        Serial.print("turn ON ");
-      }
+      interval = burner._intFeedIgnitionDelayS * TASK_SECOND + burner._intFeedIgnitionWorkS * TASK_SECOND; //sync to feed time
+      percent = burner._intFanIgnitionP;
+      Serial.print("turn ON ");
       break;
       
     case MODE_HEAT:
@@ -384,6 +432,36 @@ int PitsBurner::getFeedTime() {
   return _intFeedTime;
 }
 
+void PitsBurner::onIgnite() {
+
+  if (MODE_IGNITION == burner._currentMode) {
+    Serial.print("PitsBurner - OnIgnite: ");
+
+    int interval = 0;
+    bool ignite = false;
+
+    interval = burner.isIgnition() ? burner._intIgniterDelayS : 
+                        (tIgniter.isFirstIteration() ? burner._intIgniterStartS : burner._intIgniterWorkS);
+    interval = interval * TASK_SECOND;
+    ignite = !burner.isIgnition(); 
+
+    tIgniter.setInterval(interval);
+    Serial.print("during " + String(interval / TASK_SECOND) + " seconds ");
+    
+    burner.setIgnition(ignite);  
+  }
+
+}
+
+void PitsBurner::setIgnition(bool turnOn) {
+  _boolIgnition = turnOn;
+  digitalWrite(_pinIgniter, turnOn ? HIGH : LOW); 
+  Serial.println(String("PitsBurner: Ignition is ") + (turnOn ? "ON" : "OFF"));
+}
+
+bool PitsBurner::isIgnition() {
+  return _boolIgnition;
+}
 
 /*
 Converts termistor KTY81-210 analog readings to celsius.
