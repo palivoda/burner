@@ -13,7 +13,7 @@ PitsBurner::PitsBurner() {
   return;
 }
 
-void PitsBurner::init(int pinTBoiler, int pinTExhaust, int pinFlameSensor, int pinTFeeder, int pinFan, int pinFeeder, int pinIgniter) {
+void PitsBurner::init(int pinTBoiler, int pinTExhaust, int pinFlameSensor, int pinTFeeder, int pinFan, int pinFeeder, int pinIgniter, int pinAlarm) {
 
   Serial.print("PitsBurner: ");
   
@@ -54,10 +54,14 @@ void PitsBurner::init(int pinTBoiler, int pinTExhaust, int pinFlameSensor, int p
   digitalWrite(_pinIgniter, LOW);
   Serial.print(", pinIgniter=");
   Serial.print(_pinIgniter);
-  
+
+  _pinAlarm = pinAlarm;
+  pinMode(_pinAlarm, OUTPUT);
+  digitalWrite(_pinAlarm, LOW);
+  Serial.print(", pinAlarm=");
+  Serial.print(pinAlarm);
 
   Serial.println(". Initiated.");
-
 }
 
 
@@ -110,6 +114,7 @@ void PitsBurner::_switchMode() {
   //TODO: do not feed on switch to ignition - there already a lot of pellets to ignite.
   if (_currentMode == MODE_HEAT && getSecondsWithoutFlame() > 180) {
     Serial.println(String("PitsBurner - SwitchMode - IGNITE - no flame"));
+    resetFlameTimer();
     setCurrentMode(MODE_IGNITION);
   }
 
@@ -124,11 +129,11 @@ void PitsBurner::_switchMode() {
     Serial.println(String("PitsBurner - SwitchMode - HEAT - see flame.")); 
     setCurrentMode(MODE_HEAT);
   }
-  
 
   //if under required temperature then heat
   if (_intCurrentTemp < (_intRequiredTemp  - _intHysteresisTemp)  && _currentMode == MODE_IDLE) {
     Serial.println(String("PitsBurner - SwitchMode - HEAT - under required temperature.")); 
+    resetFlameTimer();
     setCurrentMode(MODE_HEAT);
   }
 
@@ -209,10 +214,14 @@ int PitsBurner::getSecondsWithoutFlame() {
   if (_longTimeWithoutFlame == 0) return 0;
 
   unsigned long timeWithoutFlameMillis = millis() - _longTimeWithoutFlame;
-  //NOT IMPLEMENTED 
-  //READ flame date and substract it from rtc.now to get minutes
   return (int) (timeWithoutFlameMillis / 1000);
 }
+
+void PitsBurner::resetFlameTimer() {
+  Serial.println("PitsBurner - Reset Flame Timer");
+  _longTimeWithoutFlame = 0;
+}
+
 
 int PitsBurner::getFlame() {
   return _intFlame;
@@ -237,9 +246,14 @@ PitsBurnerMode PitsBurner::getCurrentMode() {
   return _currentMode;
 }
 
-bool PitsBurner::setCurrentMode(PitsBurnerMode mode) {
-  Serial.println(String("PitsBurner - Mode: ") + _currentMode + " to " + mode);
-  _currentMode = mode;
+bool PitsBurner::setCurrentMode(PitsBurnerMode newMode) {
+  Serial.println(String("PitsBurner - Mode: ") + _currentMode + " to " + newMode);
+
+  //trigger alarm events
+  if (MODE_ALARM == newMode) onAlarmOn();
+  if (MODE_ALARM != newMode && MODE_ALARM == _currentMode) onAlarmOff();
+  
+  _currentMode = newMode;
 
   //feeder
   setFeed(LOW); 
@@ -251,10 +265,12 @@ bool PitsBurner::setCurrentMode(PitsBurnerMode mode) {
 
   //ignition
   setIgnition(false);
-  if (MODE_IGNITION == mode) tIgniter.restart();
+  if (MODE_IGNITION == newMode) tIgniter.restart();
   else tIgniter.disable();
   
-  _intMinTemp = (MODE_HEAT == mode) ? _intCurrentTemp - _intMaxDropTemp : 0; 
+  //min temperature should not go down in heat mode
+  _intMinTemp = (MODE_HEAT == newMode) ? _intCurrentTemp - _intMaxDropTemp : 0; 
+
 }
 
 //http://bildr.org/2012/03/rfp30n06le-arduino/
@@ -461,6 +477,16 @@ void PitsBurner::setIgnition(bool turnOn) {
 
 bool PitsBurner::isIgnition() {
   return _boolIgnition;
+}
+
+void PitsBurner::onAlarmOn() {
+  Serial.println("PitsBurner: OnAlarmOn");
+  digitalWrite(_pinAlarm, HIGH);
+}
+
+void PitsBurner::onAlarmOff() {
+  Serial.println("PitsBurner: OnAlarmOff");
+  digitalWrite(_pinAlarm, LOW);
 }
 
 /*

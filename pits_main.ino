@@ -27,8 +27,8 @@ void setup() {
   }
   Serial.println("RTC initialized...");
 
-              // TBoiler, TExhaust, FlameSensor, TFeeder, Fan, Feeder, Igniter
-  burner.init(   A0,      A1,       A4,          A5,      3,   11,     5       ); 
+              // TBoiler, TExhaust, FlameSensor, TFeeder, Fan, Feeder, Igniter, Alarm
+  burner.init(   A0,      A1,       A4,          A5,      3,   11,     6,       4 ); 
   display.init();
 
 }

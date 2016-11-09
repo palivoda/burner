@@ -26,11 +26,13 @@ class PitsBurner
 {
   public:
     PitsBurner();
-    void init(int, int, int, int, int, int, int);
+    void init(int, int, int, int, int, int, int, int);
     static void onOperate();
     static void onFeed();
     static void onFan();
     static void onIgnite();
+    void onAlarmOn();
+    void onAlarmOff();
     
     void setRequiredTemp(int);
     int getRequiredTemp();
@@ -55,6 +57,7 @@ class PitsBurner
 
     int getSecondsWithoutFlame();
     void updateLastFlameStatus();
+    void resetFlameTimer();
 
     PitsBurnerMode getCurrentMode();
     bool setCurrentMode(PitsBurnerMode);
@@ -73,6 +76,7 @@ class PitsBurner
     int _pinFan = 0;              //PWM out
     int _pinFeeder = 0;           //PWM out
     int _pinIgniter = 0;          //Digital out
+    int _pinAlarm = 0;            //Digital out
 
     //sensors read values
     int _intCurrentTemp = 0;
@@ -87,27 +91,26 @@ class PitsBurner
     PitsBurnerMode _currentMode = MODE_IDLE;
     int _intMinTemp = 0;                            //on HEAT cycle start set to current temp
     bool _boolIgnition = false;
-    //int _intIgnitions = 0;                        //count of ignition cycles, usually takes 22-24 to start flame
-    unsigned long _longTimeWithoutFlame = 0;        //milliseconds when flame was off (first time)
+    //int _intIgnitions = 0;                        //count of ignition cycles
+    unsigned long _longTimeWithoutFlame = 0; //milliseconds when flame was off (first time)
     
     //service settings
-    const int _intMaxTemp = 95;
+    const int _intMaxTemp = 103;
     const int _intMaxDropTemp = 10; 
     const int _intFlameLevel = 40; 
-
-    int _intFeedIgnitionWorkS = 3;
-    int _intFeedIgnitionDelayS= 40;
-    int _intFeedIgnitionP = 60;
 
     //user settings
     int _intRequiredTemp = 84;
     int _intHysteresisTemp = 2;
     //int _intExhDeltaTemp = 40;
 
-    int _intIgniterStartS = 5;
+    int _intIgniterStartS = 7;
     int _intIgniterDelayS = 10;
-    int _intIgniterWorkS = 3;
+    int _intIgniterWorkS = 5;
     
+    int _intFeedIgnitionWorkS = 3;
+    int _intFeedIgnitionDelayS= 40;
+    int _intFeedIgnitionP = 60;
     int _intFeedHeatWorkS = 1;
     int _intFeedHeatDelayS = 7;
     int _intFeedHeatP = 60;
