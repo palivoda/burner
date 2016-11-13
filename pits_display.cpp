@@ -94,11 +94,11 @@ void PitsDisplay::refresh() {
   oled.putString("% ");
 
   //Feed time
-  oled.setTextXY(3,13);
+  oled.setTextXY(3,12);
   oled.putNumber(burner.getFeedTime());
 
   //Mode
-  oled.setTextXY(7,4); 
+  oled.setTextXY(7,5); 
   switch (burner.getCurrentMode()) {
     case MODE_MANUAL: oled.putString("M"); break;
     case MODE_IGNITION: oled.putString("I"); break;
@@ -117,13 +117,18 @@ void PitsDisplay::refresh() {
     oled.putString(burner.getFlame() == 0 ? "!" : "~");  
   }
 
-  //Fan
+  //Igniter
   oled.setTextXY(7,1); 
+  if (burner.isIgnition()) oled.putString("*");
+  else oled.putString(" ");
+
+  //Fan
+  oled.setTextXY(7,2); 
   if (burner.getFan() > 1) oled.drawBitmap((unsigned char*) (display._animationFrame ? ICON_FAN1 : ICON_FAN2) ,8);
   else oled.putString(" ");
 
   //Feeder
-  oled.setTextXY(7,2); 
+  oled.setTextXY(7,3); 
   if (burner.getFeed()) oled.drawBitmap((unsigned char*) (display._animationFrame ? ICON_FEEDER1 : ICON_FEEDER2) ,8);
   else oled.putString(" ");
 

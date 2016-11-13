@@ -6,7 +6,14 @@
 
 RTC_DS3231 rtc;
 Scheduler scheduler;
-
+/*
+#include <SPI.h>
+#include <Ethernet.h>
+EthernetClient client;
+byte mac[] = { 0xDE, 0xAD, 0xBE, 0xEF, 0xFE, 0xED };
+static void onLog();
+Task tLogger(30*TASK_SECOND, TASK_FOREVER, onLog, &scheduler, true);
+*/
 void setup() {
     
   //init serial
@@ -27,8 +34,17 @@ void setup() {
   }
   Serial.println("RTC initialized...");
 
+  /*
+  if (Ethernet.begin(mac) == 0) {
+    Serial.println("Ethernet initialization failed, check DHCP...");
+  }
+  else {
+    Serial.println("Ethernet initialized...");
+    delay(1000);
+  }
+  */
               // TBoiler, TExhaust, FlameSensor, TFeeder, Fan, Feeder, Igniter, Alarm
-  burner.init(   A0,      A1,       A4,          A5,      3,   11,     6,       4 ); 
+  burner.init(   A8,      A9,       A12,         A13,     3,   9,      6,       4     ); 
   display.init();
 
 }
@@ -93,5 +109,46 @@ void loop() {
   scheduler.execute();
 }
 
+/* 
+   
+ // http://www.open-electronics.org/how-send-data-from-arduino-to-google-docs-spreadsheet/
+static void onLog() {
+  Serial.print("OnLog - ");
+
+  String data = "";
+  data+="entry.1600238660=";
+  data+=
+      String(burner.getCurrentTemp()) + "-"  + 
+      burner.getFeederTemp() + "-"  + 
+      burner.getExhaustTemp() + "-"  + 
+      burner.getFeedTime() + "-"  + 
+      burner.getSecondsWithoutFlame() + "-"  + 
+  data+="&submit=Submit";
+
+  if (client.connected()) client.stop();
+    
+  if (client.connect("docs.google.com", 80)) {
+    Serial.print("connected - ");
+    Serial.println(data);
+
+    //https://docs.google.com/forms/d/e/1FAIpQLScgCwW9Wc9DIz_8zGQKSCb2Tth16buEd9y6Jn18KwuFcVvHfw/formResponse?ifq&entry.1600238660=Hello%20World&submit=Submit%22
+    client.print("POST /formResponse?formkey=");
+    client.print("1FAIpQLScgCwW9Wc9DIz_8zGQKSCb2Tth16buEd9y6Jn18KwuFcVvHfw");
+    client.println("&ifq HTTP/1.1");
+    client.println("Host: spreadsheets.google.com");
+    client.println("Content-Type: application/x-www-form-urlencoded");
+    client.println("Connection: close");
+    client.print("Content-Length: ");
+    client.println(data.length());
+    client.println();
+    client.print(data);
+    client.println();
+ 
+  } else {
+    // if you didn't get a connection to the server:
+    Serial.println("connection failed");
+  }
+}
+*/
 
 

@@ -88,7 +88,6 @@ void PitsBurner::_readSensors() {
   //pinMode(_intFeederTemp, INPUT);
   setFeederTemp(_KTY81_210(analogRead(_pinTFeeder)));
 
-  
   Serial.println(String("PitsBurner - ReadSensors: ") + 
     "CurrT=" + getCurrentTemp() + "C (" + (float(analogRead(_pinTBoiler)) / 1024 * 5) + "V) " + 
     "->" + getRequiredTemp() + "C, " + 
@@ -118,8 +117,8 @@ void PitsBurner::_switchMode() {
     setCurrentMode(MODE_IGNITION);
   }
 
-  //if ignition and no flame for 9 minutes then alarm
-  if (_currentMode == MODE_IGNITION && getSecondsWithoutFlame() > 540) {
+  //if ignition and no flame for 10 minutes then alarm
+  if (_currentMode == MODE_IGNITION && getSecondsWithoutFlame() > 10*60) {
     Serial.println(String("PitsBurner - SwitchMode - ALARM - flame timeout"));
     setCurrentMode(MODE_ALARM);
   }

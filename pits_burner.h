@@ -91,22 +91,22 @@ class PitsBurner
     PitsBurnerMode _currentMode = MODE_IDLE;
     int _intMinTemp = 0;                            //on HEAT cycle start set to current temp
     bool _boolIgnition = false;
-    //int _intIgnitions = 0;                        //count of ignition cycles
     unsigned long _longTimeWithoutFlame = 0; //milliseconds when flame was off (first time)
     
     //service settings
     const int _intMaxTemp = 103;
     const int _intMaxDropTemp = 10; 
-    const int _intFlameLevel = 40; 
 
     //user settings
     int _intRequiredTemp = 84;
     int _intHysteresisTemp = 2;
+    
     //int _intExhDeltaTemp = 40;
 
     int _intIgniterStartS = 7;
-    int _intIgniterDelayS = 10;
+    int _intIgniterDelayS = 8;
     int _intIgniterWorkS = 5;
+    int _intFlameLevel = 40; 
     
     int _intFeedIgnitionWorkS = 3;
     int _intFeedIgnitionDelayS= 40;
@@ -118,8 +118,8 @@ class PitsBurner
     int _intFeedIdleDelayS = 90;
     int _intFeedIdleP = 60;
 
-    int _intFanIgnitionP = 30;
-    int _intFanHeatP = 60;
+    int _intFanIgnitionP = 40;
+    int _intFanHeatP = 70;
     int _intFanIdleWorkP = 35; //if fan never turned off in idle then use this to kick start the fan, e.g > 25%
     int _intFanIdleWorkS = 5;  
     int _intFanIdleOffP = 10;  //if > 0 then never stop the fan in idle, used if smoke is blowing back without fan
