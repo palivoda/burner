@@ -22,6 +22,14 @@ enum PitsBurnerMode {
   MODE_ALARM
 };
 
+enum PitsBurnerStatus {
+  STATE_OK,
+  STATE_TEMPDROP,
+  STATE_NOFLAME,
+  STATE_IGNITION_FAILED,
+  STATE_OVERHEAT
+};
+
 class PitsBurner
 {
   public:
@@ -54,6 +62,8 @@ class PitsBurner
     int getFeedTime();
     void setIgnition(bool);
     bool isIgnition();
+    void setStatus(PitsBurnerStatus);
+    PitsBurnerStatus getStatus();
 
     int getSecondsWithoutFlame();
     void updateLastFlameStatus();
@@ -92,6 +102,7 @@ class PitsBurner
     int _intMinTemp = 0;                            //on HEAT cycle start set to current temp
     bool _boolIgnition = false;
     unsigned long _longTimeWithoutFlame = 0; //milliseconds when flame was off (first time)
+    PitsBurnerStatus _enumStatus = STATE_OK;
     
     //service settings
     const int _intMaxTemp = 103;
@@ -101,7 +112,7 @@ class PitsBurner
     int _intRequiredTemp = 84;
     int _intHysteresisTemp = 2;
     
-    //int _intExhDeltaTemp = 40;
+    int _intExhDeltaTemp = 40;
 
     int _intIgniterStartS = 7;
     int _intIgniterDelayS = 8;
@@ -118,12 +129,14 @@ class PitsBurner
     int _intFeedIdleDelayS = 90;
     int _intFeedIdleP = 60;
 
-    int _intFanIgnitionP = 40;
+    int _intFanIgnitionWorkS = 5; //TODO, added to new UI
+    int _intFanIgnitionOnP = 50;
+    int _intFanIgnitionOffP = 30; //TODO, added to new UI
     int _intFanHeatP = 70;
-    int _intFanIdleWorkP = 35; //if fan never turned off in idle then use this to kick start the fan, e.g > 25%
+    int _intFanIdleOnP = 35; //if fan never turned off in idle then use this to kick start the fan, e.g > 25%
     int _intFanIdleWorkS = 5;  
     int _intFanIdleOffP = 10;  //if > 0 then never stop the fan in idle, used if smoke is blowing back without fan
-    int _intFanCleanP = 80;
+    int _intFanCleanP = 100;
 
 };
 

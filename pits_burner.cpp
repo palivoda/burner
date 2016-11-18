@@ -106,6 +106,7 @@ void PitsBurner::_switchMode() {
   //if temperature lower then minimum and not in ignition mode
   if (_intCurrentTemp < _intMinTemp && _currentMode == MODE_HEAT) {
     Serial.println(String("PitsBurner - SwitchMode - ALARM - current temperature ") + _intCurrentTemp + " drop under allowed minimum " + _intMinTemp + " during heat cycle"); 
+    setStatus(STATE_TEMPDROP);
     setCurrentMode(MODE_ALARM);
   }
 
@@ -113,6 +114,7 @@ void PitsBurner::_switchMode() {
   //TODO: do not feed on switch to ignition - there already a lot of pellets to ignite.
   if (_currentMode == MODE_HEAT && getSecondsWithoutFlame() > 180) {
     Serial.println(String("PitsBurner - SwitchMode - IGNITE - no flame"));
+    setStatus(STATE_NOFLAME);
     resetFlameTimer();
     setCurrentMode(MODE_IGNITION);
   }
@@ -120,18 +122,21 @@ void PitsBurner::_switchMode() {
   //if ignition and no flame for 10 minutes then alarm
   if (_currentMode == MODE_IGNITION && getSecondsWithoutFlame() > 10*60) {
     Serial.println(String("PitsBurner - SwitchMode - ALARM - flame timeout"));
+    setStatus(STATE_IGNITION_FAILED);
     setCurrentMode(MODE_ALARM);
   }
 
   //if ignition and is flame then switch to heat 
   if (_currentMode == MODE_IGNITION && isFlame()) {
     Serial.println(String("PitsBurner - SwitchMode - HEAT - see flame.")); 
+    setStatus(STATE_OK);
     setCurrentMode(MODE_HEAT);
   }
 
   //if under required temperature then heat
   if (_intCurrentTemp < (_intRequiredTemp  - _intHysteresisTemp)  && _currentMode == MODE_IDLE) {
     Serial.println(String("PitsBurner - SwitchMode - HEAT - under required temperature.")); 
+    setStatus(STATE_OK);
     resetFlameTimer();
     setCurrentMode(MODE_HEAT);
   }
@@ -140,6 +145,7 @@ void PitsBurner::_switchMode() {
   //if exhaust sensor exists, if exhaust temperature more then  boiler temperature + allowed delta then idle
   //if (_intExhaustTemp > 0 && (_intExhaustTemp + _intExhDeltaTemp)  > _intCurrentTemp && _currentMode == MODE_HEAT) {
   //  Serial.println(String("PitsBurner - SwitchMode - IDLE because exhaust temperature")); 
+  //  setStatus(STATE_OK);
   //  setCurrentMode(MODE_IDLE);
   //}
 
@@ -149,6 +155,7 @@ void PitsBurner::_switchMode() {
   //if heating and reached requied temperature then idle
   if (_intCurrentTemp > (_intRequiredTemp + _intHysteresisTemp)  && _currentMode == MODE_HEAT) {
     Serial.println(String("PitsBurner - SwitchMode - IDLE - required temperature reached.")); 
+    setStatus(STATE_OK);
     setCurrentMode(MODE_IDLE);
   }
 
@@ -157,11 +164,20 @@ void PitsBurner::_switchMode() {
   //if overheating then alarm
   if (_intCurrentTemp > _intMaxTemp && _currentMode != MODE_ALARM) {
     Serial.println(String("PitsBurner - SwitchMode - ALARM - overheat")); 
+    setStatus(STATE_OVERHEAT);
     setCurrentMode(MODE_ALARM);
   }
 
 }
 
+void PitsBurner::setStatus(PitsBurnerStatus newStatus) {
+   Serial.println(String("PitsBurner - Status: ") + newStatus);
+  _enumStatus = newStatus;
+}
+
+PitsBurnerStatus PitsBurner::getStatus() {
+  return _enumStatus;
+}
 
 void PitsBurner::setRequiredTemp(int t) {
   if (_intRequiredTemp  != t) {
@@ -306,7 +322,7 @@ void PitsBurner::onFan() {
     case MODE_IGNITION:
       Serial.print("in IGNITION ");
       interval = burner._intFeedIgnitionDelayS * TASK_SECOND + burner._intFeedIgnitionWorkS * TASK_SECOND; //sync to feed time
-      percent = burner._intFanIgnitionP;
+      percent = burner._intFanIgnitionOnP;
       Serial.print("turn ON ");
       break;
       
@@ -319,20 +335,20 @@ void PitsBurner::onFan() {
       
     case MODE_IDLE:
       Serial.print("in IDLE ");
-      if (burner.isFan()) {
+      if (burner.isFan()) { 
         interval = burner._intFeedIdleDelayS * TASK_SECOND; //sync to feed time
         percent = burner._intFanIdleOffP; //LOW;
         Serial.print("turn OFF ");
       }
       else {
         interval = burner._intFeedIdleWorkS* TASK_SECOND; //sync to feed time
-        percent = burner._intFanIdleWorkP;
+        percent = burner._intFanIdleOnP;
         Serial.print("turn ON ");
       }
       break;
 
     case MODE_CLEANING:
-        interval = 3 * TASK_SECOND; //recheck burner status
+        interval = 3 * TASK_SECOND; //recheck burner status after 
         percent = burner._intFanCleanP;
       
       

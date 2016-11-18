@@ -97,6 +97,16 @@ void PitsDisplay::refresh() {
   oled.setTextXY(3,12);
   oled.putNumber(burner.getFeedTime());
 
+  //Status
+  oled.setTextXY(3,12);
+  switch (burner.getStatus()) {
+    case STATE_OK: oled.putString("OK      "); break;
+    case STATE_TEMPDROP: oled.putString("TMP DROP"); break;
+    case STATE_NOFLAME: oled.putString("NO FLAME"); break;
+    case STATE_IGNITION_FAILED: oled.putString("IGN FAIL"); break;
+    case STATE_OVERHEAT: oled.putString("OVERHEAT"); break;
+  }
+
   //Mode
   oled.setTextXY(7,5); 
   switch (burner.getCurrentMode()) {
