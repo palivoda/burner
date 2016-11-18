@@ -44,7 +44,7 @@ void setup() {
   }
   */
               // TBoiler, TExhaust, FlameSensor, TFeeder, Fan, Feeder, Igniter, Alarm
-  burner.init(   A8,      A9,       A12,         A13,     3,   9,      6,       4     ); 
+  burner.init(   A8,      A9,       A12,         A5,      3,   9,     6,        4 ); 
   display.init();
 
 }
@@ -150,5 +150,4 @@ static void onLog() {
   }
 }
 */
-
 
