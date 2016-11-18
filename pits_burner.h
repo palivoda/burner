@@ -119,11 +119,11 @@ class PitsBurner
     int _intIgniterWorkS = 5;
     int _intFlameLevel = 5; 
     
-    int _intFeedIgnitionWorkS = 3;
+    int _intFeedIgnitionWorkS = 1;
     int _intFeedIgnitionDelayS= 40;
     int _intFeedIgnitionP = 60;
     int _intFeedHeatWorkS = 1;
-    int _intFeedHeatDelayS = 7;
+    int _intFeedHeatDelayS = 6;
     int _intFeedHeatP = 60;
     int _intFeedIdleWorkS = 1;
     int _intFeedIdleDelayS = 90;
