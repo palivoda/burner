@@ -117,7 +117,7 @@ class PitsBurner
     int _intIgniterStartS = 7;
     int _intIgniterDelayS = 8;
     int _intIgniterWorkS = 5;
-    int _intFlameLevel = 40; 
+    int _intFlameLevel = 5; 
     
     int _intFeedIgnitionWorkS = 3;
     int _intFeedIgnitionDelayS= 40;
@@ -129,9 +129,9 @@ class PitsBurner
     int _intFeedIdleDelayS = 90;
     int _intFeedIdleP = 60;
 
-    int _intFanIgnitionWorkS = 5; //TODO, added to new UI
+    int _intFanIgnitionWorkS = 5; //TODO, added to UI
     int _intFanIgnitionOnP = 50;
-    int _intFanIgnitionOffP = 30; //TODO, added to new UI
+    int _intFanIgnitionOffP = 30; //TODO, added to UI
     int _intFanHeatP = 70;
     int _intFanIdleOnP = 35; //if fan never turned off in idle then use this to kick start the fan, e.g > 25%
     int _intFanIdleWorkS = 5;  
