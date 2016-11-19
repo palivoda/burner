@@ -113,7 +113,7 @@ class PitsBurner
     int _intRequiredTemp = 84;
     int _intHysteresisTemp = 2;
     
-    int _intExhDeltaTemp = 16;
+    int _intExhDeltaTemp = 11;
     int _intExhHysterisisTemp = 5;
 
     int _intIgniterStartS = 7;

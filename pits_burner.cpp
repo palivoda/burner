@@ -134,13 +134,13 @@ void PitsBurner::_switchMode() {
   }
 
   //if exhaust sensor exists, if current temerture is close torequired temp, if exhaust temperature more then  boiler temperature + allowed delta then idle
-  if (_currentMode == MODE_HEAT && _intExhaustTemp > 0 && _intCurrentTemp >= (_intRequiredTemp  - _intHysteresisTemp) &&
-       _intExhaustTemp  > (_intRequiredTemp + _intExhDeltaTemp + _intExhHysterisisTemp)  ) {
-    Serial.println(String("PitsBurner - SwitchMode - IDLE because exhaust temperature")); 
+  if (_currentMode == MODE_HEAT && _intExhaustTemp > 0 && _intCurrentTemp >= (_intRequiredTemp - _intHysteresisTemp * 3 ) &&
+       _intExhaustTemp  > (_intRequiredTemp + _intExhDeltaTemp + _intExhHysterisisTemp) ) {
+    Serial.println(String("PitsBurner - SwitchMode - IDLE because exhaust temperature ")); 
     setStatus(STATE_EXHAUST_HOT);
     setCurrentMode(MODE_IDLE);
   }
-  //if under required temperature then heat
+  //if under required temperature and exhaust not hot then heat
   else if (_currentMode == MODE_IDLE && _intCurrentTemp < (_intRequiredTemp  - _intHysteresisTemp) &&
            (_intExhaustTemp == 0  || _intExhaustTemp  < (_intRequiredTemp + _intExhDeltaTemp - _intExhHysterisisTemp))) {
     Serial.println(String("PitsBurner - SwitchMode - HEAT - under required temperature.")); 
@@ -156,7 +156,7 @@ void PitsBurner::_switchMode() {
     setCurrentMode(MODE_IDLE);
   }
 
-  //if in idle mode longer than 1 hour then alarm
+  
   
   //if overheating then alarm
   if (_intCurrentTemp > _intMaxTemp && _currentMode != MODE_ALARM) {
