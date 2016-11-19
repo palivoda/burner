@@ -26,6 +26,7 @@ enum PitsBurnerStatus {
   STATE_OK,
   STATE_TEMPDROP,
   STATE_NOFLAME,
+  STATE_EXHAUST_HOT,
   STATE_IGNITION_FAILED,
   STATE_OVERHEAT
 };
@@ -112,7 +113,8 @@ class PitsBurner
     int _intRequiredTemp = 84;
     int _intHysteresisTemp = 2;
     
-    int _intExhDeltaTemp = 40;
+    int _intExhDeltaTemp = 16;
+    int _intExhHysterisisTemp = 5;
 
     int _intIgniterStartS = 7;
     int _intIgniterDelayS = 8;
@@ -123,7 +125,7 @@ class PitsBurner
     int _intFeedIgnitionDelayS= 40;
     int _intFeedIgnitionP = 60;
     int _intFeedHeatWorkS = 1;
-    int _intFeedHeatDelayS = 6;
+    int _intFeedHeatDelayS = 7;
     int _intFeedHeatP = 60;
     int _intFeedIdleWorkS = 1;
     int _intFeedIdleDelayS = 90;
@@ -132,7 +134,7 @@ class PitsBurner
     int _intFanIgnitionWorkS = 5; //TODO, added to UI
     int _intFanIgnitionOnP = 50;
     int _intFanIgnitionOffP = 30; //TODO, added to UI
-    int _intFanHeatP = 70;
+    int _intFanHeatP = 60;
     int _intFanIdleOnP = 35; //if fan never turned off in idle then use this to kick start the fan, e.g > 25%
     int _intFanIdleWorkS = 5;  
     int _intFanIdleOffP = 10;  //if > 0 then never stop the fan in idle, used if smoke is blowing back without fan

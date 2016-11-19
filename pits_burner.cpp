@@ -127,33 +127,30 @@ void PitsBurner::_switchMode() {
   }
 
   //if ignition and is flame then switch to heat 
-  if (_currentMode == MODE_IGNITION && isFlame()) {
+  else if (_currentMode == MODE_IGNITION && isFlame()) {
     Serial.println(String("PitsBurner - SwitchMode - HEAT - see flame.")); 
     setStatus(STATE_OK);
     setCurrentMode(MODE_HEAT);
   }
 
+  //if exhaust sensor exists, if current temerture is close torequired temp, if exhaust temperature more then  boiler temperature + allowed delta then idle
+  if (_currentMode == MODE_HEAT && _intExhaustTemp > 0 && _intCurrentTemp >= (_intRequiredTemp  - _intHysteresisTemp) &&
+       _intExhaustTemp  > (_intRequiredTemp + _intExhDeltaTemp + _intExhHysterisisTemp)  ) {
+    Serial.println(String("PitsBurner - SwitchMode - IDLE because exhaust temperature")); 
+    setStatus(STATE_EXHAUST_HOT);
+    setCurrentMode(MODE_IDLE);
+  }
   //if under required temperature then heat
-  if (_intCurrentTemp < (_intRequiredTemp  - _intHysteresisTemp)  && _currentMode == MODE_IDLE) {
+  else if (_currentMode == MODE_IDLE && _intCurrentTemp < (_intRequiredTemp  - _intHysteresisTemp) &&
+           (_intExhaustTemp == 0  || _intExhaustTemp  < (_intRequiredTemp + _intExhDeltaTemp - _intExhHysterisisTemp))) {
     Serial.println(String("PitsBurner - SwitchMode - HEAT - under required temperature.")); 
     setStatus(STATE_OK);
     resetFlameTimer();
     setCurrentMode(MODE_HEAT);
   }
 
-
-  //if exhaust sensor exists, if exhaust temperature more then  boiler temperature + allowed delta then idle
-  //if (_intExhaustTemp > 0 && (_intExhaustTemp + _intExhDeltaTemp)  > _intCurrentTemp && _currentMode == MODE_HEAT) {
-  //  Serial.println(String("PitsBurner - SwitchMode - IDLE because exhaust temperature")); 
-  //  setStatus(STATE_OK);
-  //  setCurrentMode(MODE_IDLE);
-  //}
-
-  //if under equired temperature during 1 hour then alarm
-
-
   //if heating and reached requied temperature then idle
-  if (_intCurrentTemp > (_intRequiredTemp + _intHysteresisTemp)  && _currentMode == MODE_HEAT) {
+  if (_currentMode == MODE_HEAT && _intCurrentTemp > (_intRequiredTemp + _intHysteresisTemp)) {
     Serial.println(String("PitsBurner - SwitchMode - IDLE - required temperature reached.")); 
     setStatus(STATE_OK);
     setCurrentMode(MODE_IDLE);
