@@ -1,78 +1,23 @@
-#include "Arduino.h"
 #include "pits_burner.h"
-#include <math.h>
-
 PitsBurner burner;
 
-Task tOperate(5*TASK_SECOND, TASK_FOREVER, &PitsBurner::onOperate, &scheduler, true);
+#include "burner_config.h"
+extern BurnerConfig cfg;
+
+#include <TaskScheduler.h>
+extern Scheduler scheduler;
+
 Task tFeed(5*TASK_SECOND, TASK_FOREVER, &PitsBurner::onFeed, &scheduler, true);
 Task tFan(5*TASK_SECOND, TASK_FOREVER, &PitsBurner::onFan, &scheduler, true);
 Task tIgniter(1*TASK_SECOND, TASK_FOREVER, &PitsBurner::onIgnite, &scheduler, false);
 
-PitsBurner::PitsBurner() {
-  return;
+void PitsBurner::init() {
+
 }
 
-void PitsBurner::init(int pinTBoiler, int pinTExhaust, int pinFlameSensor, int pinTFeeder, int pinFan, int pinFeeder, int pinIgniter, int pinAlarm) {
-
-  Serial.print("PitsBurner: ");
-  
-  _pinTBoiler = pinTBoiler;
-  pinMode(_pinTBoiler, INPUT);
-  Serial.print("pinTBoiler=");
-  Serial.print(_pinTBoiler);
-
-  _pinTExhaust = pinTExhaust;
-  pinMode(_pinTExhaust, INPUT);
-  Serial.print(", pinTExhaust=");
-  Serial.print(_pinTExhaust);
-
-  _pinFlameSensor = pinFlameSensor;
-  pinMode(_pinFlameSensor, INPUT);
-  Serial.print(", pinFlameSensor=");
-  Serial.print(_pinFlameSensor);
-
-  _pinTFeeder = pinTFeeder;
-  pinMode(_pinTFeeder, INPUT);
-  Serial.print(", pinTFeeder=");
-  Serial.print(_pinTFeeder);
-
-  _pinFan = pinFan;
-  pinMode(_pinFan, OUTPUT);
-  analogWrite(_pinFan, LOW);
-  Serial.print(", _pinFan=");
-  Serial.print(_pinFan);
-  
-  _pinFeeder = pinFeeder;
-  pinMode(_pinFeeder, OUTPUT);
-  analogWrite(_pinFeeder, LOW);
-  Serial.print(", pinFeeder=");
-  Serial.print(_pinFeeder);
-
-  _pinIgniter = pinIgniter;
-  pinMode(_pinIgniter, OUTPUT);
-  digitalWrite(_pinIgniter, LOW);
-  Serial.print(", pinIgniter=");
-  Serial.print(_pinIgniter);
-
-  _pinAlarm = pinAlarm;
-  pinMode(_pinAlarm, OUTPUT);
-  digitalWrite(_pinAlarm, LOW);
-  Serial.print(", pinAlarm=");
-  Serial.print(pinAlarm);
-
-  Serial.println(". Initiated.");
-}
-
-
-
-void PitsBurner::onOperate() {
-
-   
-  burner._readSensors();
-
-  burner._switchMode();
-
+void PitsBurner::operate() {
+  _readSensors();
+  _switchMode();
 }
 
 void PitsBurner::_readSensors() {
@@ -80,22 +25,26 @@ void PitsBurner::_readSensors() {
   //pinMode(_pinFlameSensor, INPUT);
   setFlame(_LDR04(analogRead(_pinFlameSensor)));
   updateLastFlameStatus();
-  
   //pinMode(_pinTBoiler, INPUT);
   setCurrentTemp(_KTY81_210(analogRead(_pinTBoiler)));
   //pinMode(_pinTExhaust, INPUT);
   setExhaustTemp(_KTY81_210(analogRead(_pinTExhaust)));
   //pinMode(_intFeederTemp, INPUT);
   setFeederTemp(_KTY81_210(analogRead(_pinTFeeder)));
+  setBattLevel(random(80,100)); //TODO
+  setFuelLevel(random(80,100)); //TODO
 
-  Serial.println(String("PitsBurner - ReadSensors: ") + 
-    "CurrT=" + getCurrentTemp() + "C (" + (float(analogRead(_pinTBoiler)) / 1024 * 5) + "V) " + 
-    "->" + getRequiredTemp() + "C, " + 
-    "ExhaT=" + getExhaustTemp() + " (" + (float(analogRead(_pinTExhaust)) / 1024 * 5) + "V), " +  
-    "Flame=" + getFlame() + "% (" + (float(analogRead(_pinFlameSensor)) / 1024 * 5) + "V), " + 
-    "FeedT=" + getFeederTemp() + "C (" + (float(analogRead(_pinTFeeder)) / 1024 * 5) + "V), " +
-    "NoFlame=" + getSecondsWithoutFlame() + "s"
+#ifdef _BURNER_DEBUG_SERIAL_
+  Serial.println(String("ReadSensors: ") + 
+    F("CurTemp=") + getCurrentTemp() + "C (" + (float(analogRead(_pinTBoiler)) / 1024 * 5) + "V) " + 
+    F("->") + cfg.getRequiredTemp() + "C, " + 
+    F("ExhaustTemp=") + getExhaustTemp() + " (" + (float(analogRead(_pinTExhaust)) / 1024 * 5) + "V), " +  
+    F("Flame=") + getFlame() + "% (" + (float(analogRead(_pinFlameSensor)) / 1024 * 5) + "V), " + 
+    F("FeedTemp=") + getFeederTemp() + "C (" + (float(analogRead(_pinTFeeder)) / 1024 * 5) + "V), " +
+    F("NoFlame=") + getSecondsWithoutFlame() + "s"
     );
+#endif
+
 }
 
 void PitsBurner::_switchMode() {
@@ -104,156 +53,192 @@ void PitsBurner::_switchMode() {
   if (_currentMode == MODE_MANUAL) return;
 
   //if temperature lower then minimum and not in ignition mode
-  if (_intCurrentTemp < _intMinTemp && _currentMode == MODE_HEAT) {
-    Serial.println(String("PitsBurner - SwitchMode - ALARM - current temperature ") + _intCurrentTemp + " drop under allowed minimum " + _intMinTemp + " during heat cycle"); 
-    setStatus(STATE_TEMPDROP);
-    setCurrentMode(MODE_ALARM);
+  //NOTE1: when main circulation turns on we expect temperature drop up to 10 degree
+  //NOTE2: _intMinTemp set to "cur temp" - "alarm drop temp" in the begining of heat cycle
+  if ( _intCurrentTemp < _intMinTemp && _currentMode == MODE_HEAT) {
+    #ifdef _BURNER_DEBUG_SERIAL_
+      Serial.print(F("SwitchMode-ALARM-cur temp "));
+      Serial.print(_intCurrentTemp);
+      Serial.print(F(" is under allowed minimum "));
+      Serial.print(_intMinTemp);
+      Serial.println(F(" during heat cycle"));
+    #endif
+    setCurrentMode(MODE_ALARM, ALARM_TEMPDROP);
+  }
+
+  //control circulation pump
+  if ( _intCurrentTemp > cfg.getPumpOnTemp() + cfg.getHysteresisTemp() && _currentMode != MODE_MANUAL) {
+    setPump(true);
+  }
+  else if (_intCurrentTemp < _intMinTemp - cfg.getHysteresisTemp()) {
+    setPump(false);
   }
 
   //if no flame 3 minutes then switch to ignite
   //TODO: do not feed on switch to ignition - there already a lot of pellets to ignite.
-  if (_currentMode == MODE_HEAT && getSecondsWithoutFlame() > 180) {
-    Serial.println(String("PitsBurner - SwitchMode - IGNITE - no flame"));
-    setStatus(STATE_NOFLAME);
+  if (_currentMode == MODE_HEAT && getSecondsWithoutFlame() > cfg.getFlameTimoutS()) {
+    #ifdef _BURNER_DEBUG_SERIAL_
+      Serial.println(F("SwitchMode-IGNITE-no flame"));
+    #endif
     resetFlameTimer();
-    setCurrentMode(MODE_IGNITION);
+    setCurrentMode(MODE_IGNITION, ALARM_NOFLAME);
   }
 
   //if ignition and no flame for 10 minutes then alarm
   if (_currentMode == MODE_IGNITION && getSecondsWithoutFlame() > 10*60) {
-    Serial.println(String("PitsBurner - SwitchMode - ALARM - flame timeout"));
-    setStatus(STATE_IGNITION_FAILED);
-    setCurrentMode(MODE_ALARM);
+    #ifdef _BURNER_DEBUG_SERIAL_
+      Serial.println(F("SwitchMode-ALARM-flame timeout"));
+    #endif
+    setCurrentMode(MODE_ALARM, ALARM_IGNITION_FAILED);
   }
 
   //if ignition and is flame then switch to heat 
   if (_currentMode == MODE_IGNITION && isFlame()) {
-    Serial.println(String("PitsBurner - SwitchMode - HEAT - see flame.")); 
-    setStatus(STATE_OK);
-    setCurrentMode(MODE_HEAT);
+    #ifdef _BURNER_DEBUG_SERIAL_
+      Serial.println(F("SwitchMode-HEAT-see flame")); 
+    #endif
+    setCurrentMode(MODE_HEAT, ALARM_OK);
   }
 
   //if under required temperature then heat
-  if (_intCurrentTemp < (_intRequiredTemp  - _intHysteresisTemp)  && _currentMode == MODE_IDLE) {
-    Serial.println(String("PitsBurner - SwitchMode - HEAT - under required temperature.")); 
-    setStatus(STATE_OK);
+  if (_intCurrentTemp < (cfg.getRequiredTemp()  - cfg.getHysteresisTemp())  && _currentMode == MODE_IDLE) {
+    #ifdef _BURNER_DEBUG_SERIAL_
+      Serial.println(F("SwitchMode-HEAT-under required temperature")); 
+    #endif
     resetFlameTimer();
-    setCurrentMode(MODE_HEAT);
+    setCurrentMode(MODE_HEAT, ALARM_OK);
   }
 
 
   //if exhaust sensor exists, if exhaust temperature more then  boiler temperature + allowed delta then idle
   //if (_intExhaustTemp > 0 && (_intExhaustTemp + _intExhDeltaTemp)  > _intCurrentTemp && _currentMode == MODE_HEAT) {
-  //  Serial.println(String("PitsBurner - SwitchMode - IDLE because exhaust temperature")); 
-  //  setStatus(STATE_OK);
-  //  setCurrentMode(MODE_IDLE);
+  //  #ifdef _BURNER_DEBUG_SERIAL_
+  //    Serial.println(F("SwitchMode-IDLE because exhaust temperature")); 
+  //  #endif
+  //  setCurrentMode(MODE_IDLE, ALARM_OK);
   //}
 
   //if under equired temperature during 1 hour then alarm
 
 
   //if heating and reached requied temperature then idle
-  if (_intCurrentTemp > (_intRequiredTemp + _intHysteresisTemp)  && _currentMode == MODE_HEAT) {
-    Serial.println(String("PitsBurner - SwitchMode - IDLE - required temperature reached.")); 
-    setStatus(STATE_OK);
-    setCurrentMode(MODE_IDLE);
+  if (_intCurrentTemp > (cfg.getRequiredTemp() + cfg.getHysteresisTemp())  && _currentMode == MODE_HEAT) {
+    #ifdef _BURNER_DEBUG_SERIAL_
+      Serial.println(F("SwitchMode-IDLE-temp reached")); 
+    #endif
+    setCurrentMode(MODE_IDLE, ALARM_OK);
   }
 
-  //if in idle mode longer than 1 hour then alarm
+  //TODO: if in idle mode longer than 1 hour then alarm
   
   //if overheating then alarm
-  if (_intCurrentTemp > _intMaxTemp && _currentMode != MODE_ALARM) {
-    Serial.println(String("PitsBurner - SwitchMode - ALARM - overheat")); 
-    setStatus(STATE_OVERHEAT);
-    setCurrentMode(MODE_ALARM);
+  if (_intCurrentTemp > cfg.getMaxTemp() && _currentMode != MODE_ALARM) {
+    #ifdef _BURNER_DEBUG_SERIAL_
+      Serial.println(F("SwitchMode-ALARM - overheat")); 
+    #endif
+    setCurrentMode(MODE_ALARM, ALARM_OVERHEAT);
   }
 
 }
 
-void PitsBurner::setStatus(PitsBurnerStatus newStatus) {
-   Serial.println(String("PitsBurner - Status: ") + newStatus);
-  _enumStatus = newStatus;
+void PitsBurner::_setAlarmStatus(PitsAlarmStatus newStatus) {
+  #ifdef _BURNER_SET_DEBUG_SERIAL_
+    Serial.print(F("Alarm status: "));
+    Serial.println(newStatus);
+  #endif
+  _alarmStatus = newStatus;
 }
 
-PitsBurnerStatus PitsBurner::getStatus() {
-  return _enumStatus;
+PitsAlarmStatus PitsBurner::getAlarmStatus() {
+  return _alarmStatus;
 }
 
-void PitsBurner::setRequiredTemp(int t) {
-  if (_intRequiredTemp  != t) {
-    //Serial.println(String("PitsBurner - RequiredTemp: ") + _intRequiredTemp + "->" + t);
-    _intRequiredTemp = t;
-  }
-}
-
-int PitsBurner::getRequiredTemp() {
-  return _intRequiredTemp;
-}
-
-void PitsBurner::setCurrentTemp(int t) {
+void PitsBurner::setCurrentTemp(byte t) {
   if (_intCurrentTemp != t) {
-    //Serial.println(String("PitsBurner - CurrentTemp: ") + _intCurrentTemp + " -> " + t);
+    #ifdef _BURNER_SET_DEBUG_SERIAL_
+      Serial.print(F("CurrentTemp: "));
+      Serial.print(_intCurrentTemp);
+      Serial.print(F("->"));
+      Serial.println(t);
+    #endif
     _intCurrentTemp = t;
   }
 }
 
-int PitsBurner::getCurrentTemp() {
+byte PitsBurner::getCurrentTemp() {
   return _intCurrentTemp;
 }
 
-void PitsBurner::setExhaustTemp(int t) {
+void PitsBurner::setExhaustTemp(byte t) {
   if (_intExhaustTemp != t) {
-    //Serial.println(String("PitsBurner - ExhaustTemp: ") + _intExhaustTemp + " -> " + t);
+    #ifdef _BURNER_SET_DEBUG_SERIAL_
+      Serial.print(F("ExhaustTemp: "));
+      Serial.print(_intExhaustTemp);
+      Serial.print(F("->"));
+      Serial.println(t);
+    #endif
     _intExhaustTemp = t;
   }
 }
 
-int PitsBurner::getExhaustTemp() {
+byte PitsBurner::getExhaustTemp() {
   return _intExhaustTemp;
 }
 
-void PitsBurner::setFlame(int t) {
-  //Serial.println(String("PitsBurner - Flame: ") + _intFlame + " to " + t);
+void PitsBurner::setFlame(byte t) {
+    #ifdef _BURNER_SET_DEBUG_SERIAL_
+      Serial.print(F("Flame: "));
+      Serial.print(_intFlame);
+      Serial.print(F("->"));
+      Serial.println(t);
+    #endif
   _intFlame = t;
 }
 
 void PitsBurner::updateLastFlameStatus() {
   if (isFlame()) {
-    _longTimeWithoutFlame = 0;
-  } else if (_longTimeWithoutFlame == 0) {
-    _longTimeWithoutFlame = millis();
+    _uiTimeWithoutFlame = 0;
+  } else if (_uiTimeWithoutFlame == 0) {
+    _uiTimeWithoutFlame = millis();
   }
 }
 
-int PitsBurner::getSecondsWithoutFlame() {
-  if (_longTimeWithoutFlame == 0) return 0;
+unsigned int PitsBurner::getSecondsWithoutFlame() {
+  if (_uiTimeWithoutFlame == 0) return 0;
 
-  unsigned long timeWithoutFlameMillis = millis() - _longTimeWithoutFlame;
-  return (int) (timeWithoutFlameMillis / 1000);
+  unsigned long timeWithoutFlameMillis = millis() - _uiTimeWithoutFlame;
+  return (unsigned int) (timeWithoutFlameMillis / 1000);
 }
 
 void PitsBurner::resetFlameTimer() {
-  Serial.println("PitsBurner - Reset Flame Timer");
-  _longTimeWithoutFlame = 0;
+  #ifdef _BURNER_DEBUG_SERIAL_
+    Serial.println("PitsBurner - Reset Flame Timer");
+  #endif
+  _uiTimeWithoutFlame = 0;
 }
 
 
-int PitsBurner::getFlame() {
+byte PitsBurner::getFlame() {
   return _intFlame;
 }
 
 bool PitsBurner::isFlame() {
-  return _intFlame > _intFlameLevel; 
+  return _intFlame > cfg.getFlameLevel(); 
 }
 
-void PitsBurner::setFeederTemp(int t) {
+void PitsBurner::setFeederTemp(byte t) {
   if (_intFeederTemp != t) {
-    //Serial.println(String("PitsBurner - FeederTemp: ") + _intFeederTemp + " -> " + t);
+    #ifdef _BURNER_SET_DEBUG_SERIAL_
+      Serial.print(F("FeederTemp: "));
+      Serial.print(_intFeederTemp);
+      Serial.print(F("->"));
+      Serial.println(t);
+    #endif
     _intFeederTemp = t;
   }
 }
 
-int PitsBurner::getFeederTemp() {
+byte PitsBurner::getFeederTemp() {
   return _intFeederTemp;
 }
 
@@ -261,13 +246,22 @@ PitsBurnerMode PitsBurner::getCurrentMode() {
   return _currentMode;
 }
 
-bool PitsBurner::setCurrentMode(PitsBurnerMode newMode) {
-  Serial.println(String("PitsBurner - Mode: ") + _currentMode + " to " + newMode);
-
-  //trigger alarm events
-  if (MODE_ALARM == newMode) onAlarmOn();
-  if (MODE_ALARM != newMode && MODE_ALARM == _currentMode) onAlarmOff();
+bool PitsBurner::setCurrentMode(PitsBurnerMode newMode, PitsAlarmStatus newStatus) {
+  #ifdef _BURNER_DEBUG_SERIAL_
+    Serial.print(F("Mode change: "));
+    Serial.println(newMode);
+  #endif
   
+  //trigger alarm events
+  if (MODE_ALARM == newMode) {
+    _setAlarmStatus(newStatus);
+    onAlarmOn();
+  }
+  else {
+    if (MODE_ALARM == _currentMode) onAlarmOff(); //only once on alarm clean
+    _setAlarmStatus(ALARM_OK); //always OK status if no alarm
+  }
+
   _currentMode = newMode;
 
   //feeder
@@ -278,25 +272,30 @@ bool PitsBurner::setCurrentMode(PitsBurnerMode newMode) {
   setFan(LOW);
   tFan.restart();
 
-  //ignition
+  //ignition timer restart
   setIgnition(false);
   if (MODE_IGNITION == newMode) tIgniter.restart();
   else tIgniter.disable();
   
   //min temperature should not go down in heat mode
-  _intMinTemp = (MODE_HEAT == newMode) ? _intCurrentTemp - _intMaxDropTemp : 0; 
+  _intMinTemp = (MODE_HEAT == newMode) ? _intCurrentTemp - cfg.getMaxDropTemp() : 0; 
 
 }
 
 //http://bildr.org/2012/03/rfp30n06le-arduino/
-void PitsBurner::setFan(int percent) {
-  burner._intFan = (int)((float(percent) / 100.0) * 255.0);
+void PitsBurner::setFan(byte percent) {
+  burner._intFan = (byte)((float(percent) / 100.0) * 255.0);
   analogWrite(_pinFan, burner._intFan); 
-  Serial.println("PitsBurner: Fan is at " + String(percent) + "% = " + String(_intFan) + " PWM");
+  #ifdef _BURNER_SET_DEBUG_SERIAL_
+    Serial.print(F("Fan is at: "));
+    Serial.print(percent);
+    Serial.print(F("% = PWM "));
+    Serial.println(_intFan);
+  #endif
 }
 
-int PitsBurner::getFan() {
-  return int(float(_intFan) / 255 * 100);
+byte PitsBurner::getFan() {
+  return byte(float(_intFan) / 255 * 100);
 }
 
 bool PitsBurner::isFan() {
@@ -305,55 +304,63 @@ bool PitsBurner::isFan() {
 
 
 void PitsBurner::onFan() {
-  Serial.print("PitsBurner - OnFan: ");
-
-  long interval;
-  int percent;
+  #ifdef _BURNER_DEBUG_SERIAL_
+    Serial.print(F("OnFan: "));
+  #endif
+  
+  unsigned int interval;
+  byte percent;
   bool change = true;
   
   switch (burner._currentMode) {
     
     case MODE_MANUAL:
-      Serial.print(" ignoring event in MODE_MANUAL, timer sleep 15s.");
+      #ifdef _BURNER_DEBUG_SERIAL_
+        Serial.print(F(" ignoring event in MODE_MANUAL, timer sleep 15s."));
+      #endif
       tFan.setInterval(15*TASK_SECOND);
       change = false;
       break;
       
     case MODE_IGNITION:
-      Serial.print("in IGNITION ");
-      interval = burner._intFeedIgnitionDelayS * TASK_SECOND + burner._intFeedIgnitionWorkS * TASK_SECOND; //sync to feed time
-      percent = burner._intFanIgnitionOnP;
-      Serial.print("turn ON ");
+      #ifdef _BURNER_DEBUG_SERIAL_
+        Serial.print(F("in IGNITION"));
+      #endif
+      interval = cfg.getFeedIgnitionDelayS() * TASK_SECOND + cfg.getFeedIgnitionWorkS() * TASK_SECOND; //sync to feed time
+      percent = cfg.getFanIgnitionOnP();
       break;
       
     case MODE_HEAT:
-      Serial.print("in HEAT ");
-      interval = (burner._intFeedHeatWorkS + burner._intFeedHeatDelayS) * TASK_SECOND; //sync to feed time
-      percent = burner._intFanHeatP; //work all time
-      Serial.print("turn ON ");
+      #ifdef _BURNER_DEBUG_SERIAL_
+      Serial.print(F("in HEAT"));
+      #endif
+      interval = (cfg.getFeedHeatWorkS() + cfg.getFeedHeatDelayS()) * TASK_SECOND; //sync to feed time
+      percent = cfg.getFanHeatP(); //work all time
       break;
       
     case MODE_IDLE:
-      Serial.print("in IDLE ");
+      #ifdef _BURNER_DEBUG_SERIAL_
+        Serial.print(F("in IDLE"));
+      #endif
       if (burner.isFan()) { 
-        interval = burner._intFeedIdleDelayS * TASK_SECOND; //sync to feed time
-        percent = burner._intFanIdleOffP; //LOW;
-        Serial.print("turn OFF ");
+        interval = cfg.getFeedIdleDelayS() * TASK_SECOND; //sync to feed time
+        percent = cfg.getFanIdleOffP(); //LOW;
       }
       else {
-        interval = burner._intFeedIdleWorkS* TASK_SECOND; //sync to feed time
-        percent = burner._intFanIdleOnP;
-        Serial.print("turn ON ");
+        interval = cfg.getFeedIdleWorkS() * TASK_SECOND; //sync to feed time
+        percent = cfg.getFanIdleOnP();
       }
       break;
 
     case MODE_CLEANING:
         interval = 3 * TASK_SECOND; //recheck burner status after 
-        percent = burner._intFanCleanP;
+        percent = cfg.getFanCleanP();
       
       
     default: //in OTHER mode turn feed off
-      Serial.print("in OTHER  ");
+      #ifdef _BURNER_DEBUG_SERIAL_
+        Serial.print(F("in OTHER  "));
+      #endif
       interval = 60 * TASK_SECOND; 
       percent = LOW;
       break;
@@ -361,22 +368,34 @@ void PitsBurner::onFan() {
 
   tFan.setInterval(interval);
   if (change) {
-    Serial.print("during " + String(interval / TASK_SECOND) + " seconds ");
+    #ifdef _BURNER_DEBUG_SERIAL_
+      Serial.print(F(" turn at "));
+      Serial.print(percent);
+      Serial.print(F("% during "));
+      Serial.print(interval / TASK_SECOND);
+      Serial.print(F("s "));
+    #endif
     burner.setFan(percent);
   }
-  else {
+  
+  #ifdef _BURNER_DEBUG_SERIAL_
     Serial.println();
-  }
+  #endif
 }
 
-void PitsBurner::setFeed(int percent) {
-  _intFeeder = int((float(percent) / 100) * 255);
+void PitsBurner::setFeed(byte percent) {
+  _intFeeder = byte((float(percent) / 100) * 255);
   analogWrite(_pinFeeder, _intFeeder); 
-  Serial.println("PitsBurner: Feed is at " + String(percent) + "% = " + String(_intFeeder) + " PWM");
+  #ifdef _BURNER_SET_DEBUG_SERIAL_
+    Serial.print(F("Feed is at: "));
+    Serial.print(percent);
+    Serial.print(F("% = PWM "));
+    Serial.println(_intFeeder);
+  #endif
 }
 
-int PitsBurner::getFeed() {
-  return _intFeeder;
+byte PitsBurner::getFeed() {
+  return byte(float(_intFeeder ) / 255 * 100);
 }
 
 bool PitsBurner::isFeed() {
@@ -384,59 +403,69 @@ bool PitsBurner::isFeed() {
 }
 
 void PitsBurner::onFeed() {
-  Serial.print("PitsBurner - OnFeed: ");
-
-  long interval;
-  int feed;
+  #ifdef _BURNER_DEBUG_SERIAL_
+    Serial.print(F("OnFeed: "));
+  #endif
+  
+  int interval;
+  byte feed;
   bool change = true;
   
   switch (burner._currentMode) {
     case MODE_MANUAL:
-      Serial.print(" ignoring event in MODE_MANUAL, timer sleep 15s.");
+      #ifdef _BURNER_DEBUG_SERIAL_
+        Serial.print(F(" ignoring event in MODE_MANUAL, timer sleep 15s."));
+      #endif
       tFeed.setInterval(15*TASK_SECOND);
       change = false;
       break;
       
     case MODE_IGNITION:
-      Serial.print("in IGNITION ");
+      #ifdef _BURNER_DEBUG_SERIAL_
+        Serial.print(F("in IGNITION "));
+      #endif
       if (burner.isFeed()) {
-        interval = burner._intFeedIgnitionDelayS * TASK_SECOND;
+        interval = cfg.getFeedIgnitionDelayS() * TASK_SECOND;
         feed = LOW;
       }
       else {
-        interval = burner._intFeedIgnitionWorkS * TASK_SECOND;
-        feed = burner._intFeedIgnitionP;
+        interval = cfg.getFeedIgnitionWorkS() * TASK_SECOND;
+        feed = cfg.getFeedIgnitionP();
       }
       break;
       
     case MODE_HEAT:
-      Serial.print("in HEAT ");
+      #ifdef _BURNER_DEBUG_SERIAL_
+        Serial.print(F("in HEAT "));
+      #endif
       if (burner.isFeed()) {
-        interval = burner._intFeedHeatDelayS * TASK_SECOND;
+        interval = cfg.getFeedHeatDelayS() * TASK_SECOND;
         feed = LOW;
-        Serial.print("feed OFF ");
       }
       else {
-        interval = burner._intFeedHeatWorkS * TASK_SECOND;
-        feed = burner._intFeedHeatP;
-        Serial.print("feed ON ");
+        interval = cfg.getFeedHeatWorkS() * TASK_SECOND;
+        feed = cfg.getFeedHeatP();
       }
       break;
       
     case MODE_IDLE:
-      Serial.print("in IDLE ");
+      #ifdef _BURNER_DEBUG_SERIAL_
+        Serial.print(F("in IDLE "));
+      #endif
       if (burner.isFeed()) {
-        interval = burner._intFeedIdleDelayS * TASK_SECOND;
+        interval = cfg.getFeedIdleDelayS() * TASK_SECOND;
         feed = LOW;
       }
       else {
-        interval = burner._intFeedIdleWorkS * TASK_SECOND;
-        feed = burner._intFeedIdleP;
+        interval = cfg.getFeedIdleWorkS() * TASK_SECOND;
+        feed = cfg.getFeedIdleP();
       }
       break;
       
     default: //in OTHER modes no feed at all
-      Serial.print("in OTHER  ");
+      #ifdef _BURNER_DEBUG_SERIAL_
+        Serial.print(F("in OTHER  "));
+      #endif
       interval = 60 * TASK_SECOND; 
       feed = LOW;
       break;
@@ -445,7 +474,14 @@ void PitsBurner::onFeed() {
   tFeed.setInterval(interval);
   
   if (change) {
-    Serial.print("during " + String(interval / TASK_SECOND) + " seconds ");
+    #ifdef _BURNER_DEBUG_SERIAL_
+      Serial.print(F("feed at "));
+      Serial.print(feed);
+      Serial.print(F("% during "));
+      Serial.print(interval / TASK_SECOND);
+      Serial.print(F("s "));
+    #endif
+
     burner.setFeed(feed);
 
     //log total feed seconds
@@ -453,31 +489,78 @@ void PitsBurner::onFeed() {
       burner._intFeedTime += (interval / TASK_SECOND);
     }
   }
-  else {
+
+  #ifdef _BURNER_DEBUG_SERIAL_
     Serial.println();
-  }
-  
+  #endif  
 }
 
-int PitsBurner::getFeedTime() {
+byte PitsBurner::getFeedTime() {
   return _intFeedTime;
+}
+
+byte PitsBurner::getBattLevel() 
+{
+  return _intBattLevel;
+}
+
+void PitsBurner::setBattLevel(byte t) {
+    #ifdef _BURNER_SET_DEBUG_SERIAL_
+      Serial.print(F("Battery: "));
+      Serial.println(t);
+    #endif
+  _intBattLevel = t;
+}
+
+byte PitsBurner::getFuelLevel() 
+{
+  return _intFuelLevel;
+}
+
+void PitsBurner::setFuelLevel(byte t) {
+    #ifdef _BURNER_SET_DEBUG_SERIAL_
+      Serial.print(F("Fuel: "));
+      Serial.println(t);
+    #endif
+  _intFuelLevel = t;
+}
+
+bool PitsBurner::isPump()
+{
+  return _boolPump;
+}
+
+void PitsBurner::setPump(bool v) 
+{
+  #ifdef _BURNER_DEBUG_SERIAL_
+    Serial.println(F("Pump "));
+    Serial.println(v ? F("ON") : F("OFF"));
+  #endif
+  digitalWrite(_pinPump, v ? HIGH : LOW);
+  _boolPump = v;
 }
 
 void PitsBurner::onIgnite() {
 
   if (MODE_IGNITION == burner._currentMode) {
-    Serial.print("PitsBurner - OnIgnite: ");
-
+    #ifdef _BURNER_DEBUG_SERIAL_
+      Serial.print(F("OnIgnite: "));
+    #endif
+    
     int interval = 0;
     bool ignite = false;
 
-    interval = burner.isIgnition() ? burner._intIgniterDelayS : 
-                        (tIgniter.isFirstIteration() ? burner._intIgniterStartS : burner._intIgniterWorkS);
+    interval = burner.isIgnition() ? cfg.getIgniterDelayS() : 
+                        (tIgniter.isFirstIteration() ? cfg.getIgniterStartS() : cfg.getIgniterWorkS());
     interval = interval * TASK_SECOND;
     ignite = !burner.isIgnition(); 
 
     tIgniter.setInterval(interval);
-    Serial.print("during " + String(interval / TASK_SECOND) + " seconds ");
+    #ifdef _BURNER_DEBUG_SERIAL_
+      Serial.print(F("during "));
+      Serial.print(interval / TASK_SECOND);
+      Serial.print(F("s "));
+    #endif
     
     burner.setIgnition(ignite);  
   }
@@ -487,7 +570,11 @@ void PitsBurner::onIgnite() {
 void PitsBurner::setIgnition(bool turnOn) {
   _boolIgnition = turnOn;
   digitalWrite(_pinIgniter, turnOn ? HIGH : LOW); 
-  Serial.println(String("PitsBurner: Ignition is ") + (turnOn ? "ON" : "OFF"));
+
+  #ifdef _BURNER_DEBUG_SERIAL_
+    if (turnOn) Serial.println(F("Ignition ON"));
+    else Serial.println(F("Ignition OFF"));
+  #endif
 }
 
 bool PitsBurner::isIgnition() {
@@ -495,12 +582,16 @@ bool PitsBurner::isIgnition() {
 }
 
 void PitsBurner::onAlarmOn() {
-  Serial.println("PitsBurner: OnAlarmOn");
+  #ifdef _BURNER_DEBUG_SERIAL_
+    Serial.println(F("Alarm ON"));
+  #endif
   digitalWrite(_pinAlarm, HIGH);
 }
 
 void PitsBurner::onAlarmOff() {
-  Serial.println("PitsBurner: OnAlarmOff");
+  #ifdef _BURNER_DEBUG_SERIAL_
+    Serial.println(F("Alarm OFF"));
+  #endif
   digitalWrite(_pinAlarm, LOW);
 }
 
