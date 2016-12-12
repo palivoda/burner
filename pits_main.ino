@@ -21,7 +21,7 @@ void setup() {
   Serial.begin(9600);
   //cfg.reset(); //uncommend once if you need to reset config
   cfg.load();
-  //nexdisp.init();
+  nexdisp.init();
   burner.init(); 
   net.init();
 }
@@ -34,6 +34,6 @@ void loop() {
 
 void onPulse() {
   burner.operate();
-  //nexdisp.refresh();
+  nexdisp.refresh();
 }
 
