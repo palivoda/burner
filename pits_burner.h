@@ -8,7 +8,6 @@
 
 #include <Arduino.h>
 
-//#define _BURNER_READ_SERIAL_
 //#define _BURNER_DEBUG_SERIAL_
 //#define _BURNER_SET_DEBUG_SERIAL_
 
@@ -91,6 +90,7 @@ class PitsBurner
     float _KTY81_210(float);
     float _LDR04(float);
     void _setAlarmStatus(PitsAlarmStatus);
+    byte _HYSRF05();
 
     //physical pins connection
     const byte _pinTBoiler = A0;          //Analog in
@@ -102,8 +102,8 @@ class PitsBurner
     const byte _pinIgniter = 3;           //Digital out
     const byte _pinAlarm = 2;             //Digital out
     const byte _pinBattery = A5;          //Analog in
-    const byte _pinFuelRead = 7;          //Digital in
-    const byte _pinFuelEcho = 8;          //Digital out
+    const byte _pinFuelTrig = 7;          //Digital out
+    const byte _pinFuelEcho = 8;          //Digital in
     const byte _pinPump = 9;              //Digital out
 
     //sensors read values
@@ -112,7 +112,8 @@ class PitsBurner
     byte _intFeederTemp = 0;
     byte _intFlame = 0;
     byte _intBattLevel = 0;  //TODO
-    byte _intFuelLevel = 0;  //TODO
+    byte _intFuelLevel = 0;
+    const short _msFuelTimout = 15000;     //// depends on max distance - 3000 µs = 50cm // 30000 µs = 5 m
     
     //object internal states
     unsigned int _intFeedTime = 0;           //total feed seconds counter
@@ -124,8 +125,8 @@ class PitsBurner
     unsigned int _uiTimeWithoutFlame = 0; //milliseconds when flame was off (first time)
     PitsAlarmStatus _alarmStatus = ALARM_OK;
     bool _boolPump = false;
-
-
+    
+    
 };
 
 #endif

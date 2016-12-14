@@ -27,7 +27,7 @@ void setup() {
 }
 
 void loop() {
-  //nexdisp.loop(); //RX/TX pins are shared between Nextion display and USB! 
+  nexdisp.loop(); //RX/TX pins are shared between Nextion display and USB! 
   scheduler.execute();
   net.listen();
 }

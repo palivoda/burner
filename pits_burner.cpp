@@ -12,7 +12,18 @@ Task tFan(5*TASK_SECOND, TASK_FOREVER, &PitsBurner::onFan, &scheduler, true);
 Task tIgniter(1*TASK_SECOND, TASK_FOREVER, &PitsBurner::onIgnite, &scheduler, false);
 
 void PitsBurner::init() {
-
+   pinMode(_pinTBoiler,INPUT);  
+   pinMode(_pinTExhaust,INPUT);  
+   pinMode(_pinFlameSensor,INPUT);  
+   pinMode(_pinTFeeder,INPUT);  
+   pinMode(_pinFan,OUTPUT);  
+   pinMode(_pinFeeder,OUTPUT);  
+   pinMode(_pinIgniter,OUTPUT);
+   pinMode(_pinAlarm,OUTPUT);
+   pinMode(_pinFuelTrig,OUTPUT);
+   pinMode(_pinFuelEcho,INPUT);
+   pinMode(_pinBattery,OUTPUT);
+   pinMode(_pinPump,OUTPUT);
 }
 
 void PitsBurner::operate() {
@@ -32,16 +43,24 @@ void PitsBurner::_readSensors() {
   //pinMode(_intFeederTemp, INPUT);
   setFeederTemp(_KTY81_210(analogRead(_pinTFeeder)));
   setBattLevel(random(80,100)); //TODO
-  setFuelLevel(random(80,100)); //TODO
+
+  byte fuelCm = _HYSRF05();
+  if (fuelCm > cfg.getFuelLevel(P0)) setFuelLevel(P0);
+  else if (fuelCm > cfg.getFuelLevel(P20)) setFuelLevel(P20);
+  else if (fuelCm > cfg.getFuelLevel(P40)) setFuelLevel(P40);
+  else if (fuelCm > cfg.getFuelLevel(P60)) setFuelLevel(P60);
+  else if (fuelCm > cfg.getFuelLevel(P80)) setFuelLevel(P80);
+  else setFuelLevel(P100);
 
 #ifdef _BURNER_DEBUG_SERIAL_
   Serial.println(String("ReadSensors: ") + 
-    F("CurTemp=") + getCurrentTemp() + "C (" + (float(analogRead(_pinTBoiler)) / 1024 * 5) + "V) " + 
+    F("CurT=") + getCurrentTemp() + "C (" + (float(analogRead(_pinTBoiler)) / 1024 * 5) + "V) " + 
     F("->") + cfg.getRequiredTemp() + "C, " + 
-    F("ExhaustTemp=") + getExhaustTemp() + " (" + (float(analogRead(_pinTExhaust)) / 1024 * 5) + "V), " +  
+    F("ExhT=") + getExhaustTemp() + " (" + (float(analogRead(_pinTExhaust)) / 1024 * 5) + "V), " +  
     F("Flame=") + getFlame() + "% (" + (float(analogRead(_pinFlameSensor)) / 1024 * 5) + "V), " + 
-    F("FeedTemp=") + getFeederTemp() + "C (" + (float(analogRead(_pinTFeeder)) / 1024 * 5) + "V), " +
-    F("NoFlame=") + getSecondsWithoutFlame() + "s"
+    F("FeedT=") + getFeederTemp() + "C (" + (float(analogRead(_pinTFeeder)) / 1024 * 5) + "V), " +
+    F("NoFlame=") + getSecondsWithoutFlame() + "s, " + 
+    F("Fuel=") + getFuelLevel() + "% (" + fuelCm + ")"
     );
 #endif
 
@@ -532,8 +551,10 @@ bool PitsBurner::isPump()
 
 void PitsBurner::setPump(bool v) 
 {
+  if (_boolPump == v) return;
+   
   #ifdef _BURNER_DEBUG_SERIAL_
-    Serial.println(F("Pump "));
+    Serial.print(F("Pump "));
     Serial.println(v ? F("ON") : F("OFF"));
   #endif
   digitalWrite(_pinPump, v ? HIGH : LOW);
@@ -626,5 +647,27 @@ float PitsBurner::_LDR04(float sensorValue) {
   float Res2 = ((5.0  * Res1) / Vout1) - Res1;   // caclulate  Resistor 2
   return (Res2 / (Res1 + Res2)) * 100;
 }
+
+/*
+Returns CM readings from ultrasonic sensor.
+Reffer: http://arduino-project.net/podklyuchenie-ul-trazvukovogo-dal-nomera-hc-sr04-k-arduino/ 
+
+ */
+byte PitsBurner::_HYSRF05() {
+
+  digitalWrite(_pinFuelTrig, LOW);
+  delayMicroseconds(2);
+  digitalWrite(_pinFuelTrig, HIGH);
+  delayMicroseconds(10);
+  digitalWrite(_pinFuelTrig, LOW);
+
+  short duration = pulseIn(_pinFuelEcho, HIGH, _msFuelTimout);
+  //Serial.println(duration);
+
+  if (duration == 0) duration = _msFuelTimout; //set to max if no reading
+  
+  return duration / 29 / 2; //return centemeters
+}
+
 
 
