@@ -15,13 +15,17 @@ BufferFiller bfill;
 
 void BurnerEthernet::init() 
 { 
-   //Serial.println(F("Net init"));
+  Serial.println(F("Net init"));
   
-  if (ether.begin(sizeof Ethernet::buffer, ecoPelletMac) == 0)
+  if (ether.begin(sizeof Ethernet::buffer, ecoPelletMac) == 0) {
     Serial.println(F("Ethernet setup failed"));
-  
-  if (!ether.dhcpSetup("EcoPellet", true))
+    digitalWrite(LED_BUILTIN, HIGH);
+  }
+    
+  if (!ether.dhcpSetup("EcoPellet", true)) {
     Serial.println(F("DHCP failed"));
+    digitalWrite(LED_BUILTIN, HIGH);
+  }
   //ether.staticSetup(ecoPelletIp);
   
   //ether.printIp("MAC: ", ecoPelletMac);
