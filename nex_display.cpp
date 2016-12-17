@@ -171,7 +171,12 @@ void bBurnerModeCallback(void *ptr)
       case 10: burner.setFeed(LOW); break;
       case 21: burner.setFan(cfg.getFanHeatP()); break;
       case 20: burner.setFan(LOW); break;
-      
+      case 30: burner.setPump(false); break;
+      case 31: burner.setPump(true); break;
+      case 40: burner.setIgnition(false); break;
+      case 41: burner.setIgnition(true); break;
+      case 50: burner.onAlarmOff(); break;
+      case 51: burner.onAlarmOn(); break;
     }    
 }
 
