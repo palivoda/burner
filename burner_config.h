@@ -11,6 +11,7 @@
 //#define _BURNER_CONFIG_DEBUG
 
 enum PERCENT_RANGE {
+  CHARGE = 101,
   P100 = 100,
   P80 = 80,
   P60 = 60,
@@ -21,7 +22,7 @@ enum PERCENT_RANGE {
 
 struct BurnerConfigData {
 
-    byte _version = 3; //data structure version
+    byte _version = 4; //data structure version
 
     //alarm page
     byte _intMaxTemp = 86;
@@ -44,17 +45,19 @@ struct BurnerConfigData {
     byte _intFeedIdleWorkS = 1;
     byte _intFeedIdleDelayS = 90;
     byte _intFeedIdleP = 60;
+    float _flFeedAmpsRev = 5.5; //TODO: not in UI
+    float _flFeedAmpsMax = 8.0; //TODO: not in UI
 
     //fan page
-    byte _intFanIgnitionWorkS = 5;   //TODO - in UI, add to logic
+    byte _intFanIgnitionWorkS = 5;   //TODO: in UI, add to logic
     byte _intFanIgnitionOnP = 50;
-    byte _intFanIgnitionOffP = 30;   //TODO - in UI, add to logic
+    byte _intFanIgnitionOffP = 30;   //TODO: in UI, add to logic
     byte _intFanHeatP = 70;
     byte _intFanIdleOnP = 35;        //if fan never turned off in idle then use this to kick start the fan, e.g > 25%
     byte _intFanIdleWorkS = 5;  
     byte _intFanIdleOffP = 10;       //if > 0 then never stop the fan in idle, used if smoke is blowing back without fan
-    byte _intFanCleanWorkS = 10;     //TODO - in UI, add to logic
-    byte _intFanCleanP = 100;        //TODO - in UI, add to logic
+    byte _intFanCleanWorkS = 10;     //TODO: in UI, add to logic
+    byte _intFanCleanP = 100;        //TODO: in UI, add to logic
 
     //ignition page
     byte _intFlameLevel = 5; 
@@ -129,6 +132,10 @@ class BurnerConfig {
     byte getFeedIdleDelayS();
     void setFeedIdleP(byte);
     byte getFeedIdleP();
+    void setFeedAmpsRev(float);
+    float getFeedAmpsRev();
+    void setFeedAmpsMax(float);
+    float getFeedAmpsMax();
     
     void setFanIgnitionWorkS(byte);
     byte getFanIgnitionWorkS();

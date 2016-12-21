@@ -217,6 +217,30 @@ byte BurnerConfig::getFeedIdleP() {
   return _data._intFeedIdleP;
 }
 
+void BurnerConfig::setFeedAmpsMax(float v) {
+    #ifdef _BURNER_CONFIG_DEBUG
+      Serial.print(F("FeedAmpsMax: "));
+      Serial.println(v);
+    #endif
+    _data._flFeedAmpsMax= v;
+}
+
+float BurnerConfig::getFeedAmpsMax() {
+  return _data._flFeedAmpsMax;
+}
+
+void BurnerConfig::setFeedAmpsRev(float v) {
+    #ifdef _BURNER_CONFIG_DEBUG
+      Serial.print(F("FeedAmpsRev: "));
+      Serial.println(v);
+    #endif
+    _data._flFeedAmpsRev= v;
+}
+
+float BurnerConfig::getFeedAmpsRev() {
+  return _data._flFeedAmpsRev;
+}
+
 void BurnerConfig::setFanIgnitionWorkS(byte v) {
     #ifdef _BURNER_CONFIG_DEBUG
       Serial.print(F("FanIgnitionWorkS: "));

@@ -19,7 +19,7 @@ void BurnerEthernet::init()
   
   if (ether.begin(sizeof Ethernet::buffer, ecoPelletMac) == 0) {
     Serial.println(F("Ethernet setup failed"));
-    digitalWrite(LED_BUILTIN, HIGH);
+    digitalWrite(LED_BUILTIN, HIGH); //its D13 pin that should be used by Ethernet module only!
   }
     
   if (!ether.dhcpSetup("EcoPellet", true)) {

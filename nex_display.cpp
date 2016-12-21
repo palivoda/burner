@@ -171,8 +171,8 @@ void bBurnerModeCallback(void *ptr)
       case 10: burner.setFeed(LOW); break;
       case 21: burner.setFan(cfg.getFanHeatP()); break;
       case 20: burner.setFan(LOW); break;
-      case 30: burner.setPump(false); break;
-      case 31: burner.setPump(true); break;
+      case 30: burner.setPumpUPS(false); break;
+      case 31: burner.setPumpUPS(true); break;
       case 40: burner.setIgnition(false); break;
       case 41: burner.setIgnition(true); break;
       case 50: burner.onAlarmOff(); break;
@@ -248,10 +248,10 @@ void NexDisplay::refresh() {
     nxSendValue(pMain, F("nFdT"), burner.getFeederTemp());
     nxSendValue(pServ, F("nFdS"), burner.getFeedTime());
     nxSendValue(pMain, F("nFlm"), burner.getFlame());
-    nxSendValue(pMain, F("nNoFlm"), burner.isFlame() ? 0 : cfg.getFlameTimoutS() - burner.getSecondsWithoutFlame());
+    nxSendValue(pMain, F("nNoFlm"), burner.isFlame() ? 0 : burner.getSecondsWithoutFlame()); //cfg.getFlameTimoutS() - burner.getSecondsWithoutFlame()
     nxSendValue(pMain, F("nFan"), burner.getFan());
-    nxSendValue(pMain, F("nFuel"), burner.getBattLevel()); 
-    nxSendValue(pMain, F("nBat"), burner.getFuelLevel());
+    nxSendValue(pMain, F("nBat"), burner.getBattLevel()); 
+    nxSendValue(pMain, F("nFuel"), burner.getFuelLevel());
     nxSendValue(pState, F("vMode"), burner.getCurrentMode()); 
     //TODO: pump indication nxSendValue(F("pMain.???"), burner.isPump());
 
@@ -272,6 +272,7 @@ void NexDisplay::refresh() {
       case ALARM_OVERHEAT: state += F(" - Overheat"); break;
       case ALARM_MANUAL: state += F(" - Manual"); break;
     }
+    if (burner.isFeedReverse())  state += F(" (R)"); //TODO icon in display
     nxSendMessage(state.c_str());
 
     //WARNING: to fast charts refresh will broke chart, ok on 8 secs interaval
