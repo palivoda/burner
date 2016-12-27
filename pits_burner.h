@@ -38,6 +38,7 @@ class PitsBurner
     
     void init();
     void operate();
+    void beep();
 
     //events, timers
     static void onFeed();
@@ -55,6 +56,7 @@ class PitsBurner
     byte getFeederTemp();
     void setFeederAmps(float);   //to overwrite sensors value
     float getFeederAmps();
+    byte getMinTemp();          //caclualted during heat start
     
     void setFlame(byte);        //to overwrite sensors value
     byte getFlame();

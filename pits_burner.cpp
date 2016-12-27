@@ -31,10 +31,15 @@ void PitsBurner::init() {
   pinMode(_pinPumpUPS,OUTPUT);
 
   //check buzzer
+  beep();
+}
+
+void PitsBurner::beep() {
   tone(_pinBuzzer, 1915);
-  delay(300);
+  delay(150);
   noTone(_pinBuzzer);
 }
+
 
 void PitsBurner::operate() {
   _readSensors();
@@ -61,7 +66,7 @@ void PitsBurner::_readSensors() {
   else setFuelLevel(P100);
 
   //battery level reading
-  _intBattDVolts = (byte)_vDivVin(5500, 1000, _pinBattery)*10; //TODO: add diode max drop voltage on input
+  _intBattDVolts = (byte)_vDivVin(5500, 835, _pinBattery)*10; //R2 actually is 1000, but calibrated value is 835.
   if (_intBattDVolts > cfg.getBattLevel(P100)) setBattLevel(CHARGE);
   else if (_intBattDVolts > cfg.getBattLevel(P80)) setBattLevel(P100);
   else if (_intBattDVolts > cfg.getBattLevel(P60)) setBattLevel(P80);
@@ -85,6 +90,10 @@ void PitsBurner::_readSensors() {
     );
 #endif
 
+}
+
+byte PitsBurner::getMinTemp() {
+  return _intMinTemp;
 }
 
 void PitsBurner::_switchMode() {
@@ -160,7 +169,7 @@ void PitsBurner::_switchMode() {
   }
 
   //if exhaust sensor exists, if exhaust temperature more then  boiler temperature + allowed delta then idle
-  if (getExhaustTemp() > 0 && getCurrentMode() == MODE_HEAT && getExhaustTemp()  > getCurrentTemp() + cfg.getExhaustDeltaTemp()) {
+  if (getCurrentMode() == MODE_HEAT && getExhaustTemp() > 0 && getExhaustTemp()  > getCurrentTemp() + cfg.getExhaustDeltaTemp()) {
     #ifdef _BURNER_DEBUG_SERIAL_
       Serial.println(F("SwitchMode-IDLE because exhaust")); 
     #endif
@@ -171,14 +180,14 @@ void PitsBurner::_switchMode() {
   //TODO: if in idle mode longer than X hours then alarm (do we know use case for this?)
 
   //if heating and reached requied temperature then clean and then idle
-  if (getCurrentTemp() > (cfg.getRequiredTemp() + cfg.getHysteresisTemp())  && getCurrentMode() == MODE_HEAT) {
+  if (getCurrentMode() == MODE_HEAT && getCurrentTemp() > (cfg.getRequiredTemp() + cfg.getHysteresisTemp())) {
     #ifdef _BURNER_DEBUG_SERIAL_
       Serial.println(F("SwitchMode-CLEAN-temp reached")); 
     #endif
     setCurrentMode(MODE_CLEANING, ALARM_OK);
     return;
   }
-  else if (getSecondsInCurrentMode() > cfg.getFanCleanWorkS() && getCurrentMode() == MODE_CLEANING) {
+  else if (getCurrentMode() == MODE_CLEANING && getSecondsInCurrentMode() > cfg.getFanCleanWorkS()) {
     #ifdef _BURNER_DEBUG_SERIAL_
       Serial.println(F("SwitchMode-IDLE-temp reached")); 
     #endif
@@ -198,7 +207,7 @@ void PitsBurner::_switchMode() {
   }
 
   //if under required temperature then heat
-  if (getCurrentTemp() < (cfg.getRequiredTemp()  - cfg.getHysteresisTemp())  && getCurrentMode() == MODE_IDLE) {
+  if (getCurrentMode() == MODE_IDLE && getCurrentTemp() < (cfg.getRequiredTemp()  - cfg.getHysteresisTemp())) {
     #ifdef _BURNER_DEBUG_SERIAL_
       Serial.println(F("SwitchMode-HEAT-under required temperature")); 
     #endif

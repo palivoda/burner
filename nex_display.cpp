@@ -157,7 +157,10 @@ void bSaveCallback(void *ptr)
     }
     
     String msg;
-    if (bRead && cfg.store()) msg="Saved!";
+    if (bRead && cfg.store()) {
+      msg="Saved!";
+      burner.beep();
+    }
     else msg="Failed!";
     
     nxSendMessage(msg.c_str());
@@ -173,17 +176,20 @@ void bBurnerModeCallback(void *ptr)
       case 4: burner.setCurrentMode(MODE_IDLE, ALARM_OK); break;
       case 5: burner.setCurrentMode(MODE_CLEANING, ALARM_OK); break;
       case 6: burner.setCurrentMode(MODE_ALARM, ALARM_MANUAL); break;
-      case 11: burner.setFeed(cfg.getFeedHeatP()); break;
-      case 10: burner.setFeed(LOW); break;
-      case 21: burner.setFan(cfg.getFanHeatP()); break;
-      case 20: burner.setFan(LOW); break;
-      case 30: burner.setPumpUPS(false); break;
-      case 31: burner.setPumpUPS(true); break;
-      case 40: burner.setIgnition(false); break;
-      case 41: burner.setIgnition(true); break;
-      case 50: burner.onAlarmOff(); break;
-      case 51: burner.onAlarmOn(); break;
-    }    
+      case 11: burner.setFeed(cfg.getFeedHeatP()); burner.beep();; break;
+      case 10: burner.setFeed(LOW); burner.beep(); break;
+      case 21: burner.setFan(cfg.getFanHeatP()); burner.beep(); break;
+      case 20: burner.setFan(LOW); burner.beep(); break;
+      case 30: burner.setPumpUPS(false); burner.beep(); break;
+      case 31: burner.setPumpUPS(true); burner.beep(); break;
+      case 40: burner.setIgnition(false); burner.beep(); break;
+      case 41: burner.setIgnition(true); burner.beep(); break;
+      case 50: burner.onAlarmOff(); burner.beep(); break;
+      case 51: burner.onAlarmOn(); burner.beep(); break;
+      case 60: burner.setFeedReverse(false); burner.beep(); break;
+      case 61: burner.setFeedReverse(true); burner.beep(); break;
+    }
+        
 }
 
 void NexDisplay::init() {
@@ -265,6 +271,7 @@ void NexDisplay::refresh() {
     nxSendValue(pMain, F("vRev"), burner.isFeedReverse());
     nxSendValue(pBat, F("nVts"), burner.getBattDVolts()); 
     nxSendValue(pFuel, F("nFlCm"), burner.getFuelCm()); 
+    nxSendValue(pMain, F("nMinT"), burner.getMinTemp()); 
     
 
     String state;
@@ -278,11 +285,11 @@ void NexDisplay::refresh() {
     }
     switch (burner.getAlarmStatus()) {
       case ALARM_OK: break;
-      case ALARM_TEMPDROP: state += F(" - Temp. drop"); break;
-      case ALARM_NOFLAME: state += F(" - No flame"); break;
-      case ALARM_IGNITION_FAILED: state += F(" - Ignition failed"); break;
-      case ALARM_OVERHEAT: state += F(" - Overheat"); break;
-      case ALARM_MANUAL: state += F(" - Manual"); break;
+      case ALARM_TEMPDROP: state += F(": Temp. drop"); break;
+      case ALARM_NOFLAME: state += F(": No flame"); break;
+      case ALARM_IGNITION_FAILED: state += F(": Ignition failed"); break;
+      case ALARM_OVERHEAT: state += F(": Overheat"); break;
+      case ALARM_MANUAL: state += F(": Manual"); break;
     }
     nxSendMessage(state.c_str());
 
