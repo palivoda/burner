@@ -108,6 +108,8 @@ void bSaveCallback(void *ptr)
         recvRetNumber(&_rv, _timeout); cfg.setFeedIdleWorkS(_rv);
         recvRetNumber(&_rv, _timeout); cfg.setFeedIdleDelayS(_rv);
         recvRetNumber(&_rv, _timeout); cfg.setFeedIdleP(_rv);
+        recvRetNumber(&_rv, _timeout); cfg.setFeedAmpsRev(_rv);
+        recvRetNumber(&_rv, _timeout); cfg.setFeedAmpsMax(_rv);
         bRead = true;
         break;
       case 105: //fan page
@@ -146,6 +148,10 @@ void bSaveCallback(void *ptr)
         recvRetNumber(&_rv, _timeout); cfg.setBattLevel(P40, _rv);
         recvRetNumber(&_rv, _timeout); cfg.setBattLevel(P20, _rv);
         recvRetNumber(&_rv, _timeout); cfg.setBattLevel(P0, _rv);
+        bRead = true;
+        break;
+      case 999: //service page - reset
+        cfg.reset();
         bRead = true;
         break;
     }
@@ -253,7 +259,13 @@ void NexDisplay::refresh() {
     nxSendValue(pMain, F("nBat"), burner.getBattLevel()); 
     nxSendValue(pMain, F("nFuel"), burner.getFuelLevel());
     nxSendValue(pState, F("vMode"), burner.getCurrentMode()); 
+    nxSendValue(pState, F("vAlmStat"), burner.getAlarmStatus()); 
     //TODO: pump indication nxSendValue(F("pMain.???"), burner.isPump());
+    nxSendValue(pFeed, F("nAmps"), burner.getFeederAmps()*10); 
+    nxSendValue(pMain, F("vRev"), burner.isFeedReverse());
+    nxSendValue(pBat, F("nVts"), burner.getBattDVolts()); 
+    nxSendValue(pFuel, F("nFlCm"), burner.getFuelCm()); 
+    
 
     String state;
     switch (burner.getCurrentMode()) {
@@ -272,7 +284,6 @@ void NexDisplay::refresh() {
       case ALARM_OVERHEAT: state += F(" - Overheat"); break;
       case ALARM_MANUAL: state += F(" - Manual"); break;
     }
-    if (burner.isFeedReverse())  state += F(" (R)"); //TODO icon in display
     nxSendMessage(state.c_str());
 
     //WARNING: to fast charts refresh will broke chart, ok on 8 secs interaval

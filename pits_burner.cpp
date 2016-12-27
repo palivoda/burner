@@ -32,42 +32,42 @@ void PitsBurner::init() {
 
   //check buzzer
   tone(_pinBuzzer, 1915);
-  delay(100);
+  delay(300);
   noTone(_pinBuzzer);
 }
 
 void PitsBurner::operate() {
   _readSensors();
   _switchMode();
-  //_inAlarmOperate();
+  _inAlarmOperate();
 }
 
 void PitsBurner::_readSensors() {
 
-  setCurrentTemp(_KTY81_110(_pinTBoiler));
-  setExhaustTemp(_KTY81_110(_pinTExhaust));
-  setFeederTemp(_KTY81_110(_pinTFeeder));
-  setFlame(_LDR04(_pinFlameSensor));
+  setCurrentTemp((byte)_KTY81_110(_pinTBoiler));
+  setExhaustTemp((byte)_KTY81_110(_pinTExhaust));
+  setFeederTemp((byte)_KTY81_110(_pinTFeeder));
+  setFlame((byte)_LDR04(_pinFlameSensor));
   updateLastFlameStatus();
   setFeederAmps(_ACS712(_pinFeedAmps));
 
   //fuel level reading 
-  byte fuelCm = _HYSRF05(_pinFuelTrig, _pinFuelEcho);
-  if (fuelCm > cfg.getFuelLevel(P0)) setFuelLevel(P0);
-  else if (fuelCm > cfg.getFuelLevel(P20)) setFuelLevel(P20);
-  else if (fuelCm > cfg.getFuelLevel(P40)) setFuelLevel(P40);
-  else if (fuelCm > cfg.getFuelLevel(P60)) setFuelLevel(P60);
-  else if (fuelCm > cfg.getFuelLevel(P80)) setFuelLevel(P80);
+  _intFuelCm = _HYSRF05(_pinFuelTrig, _pinFuelEcho);
+  if (_intFuelCm > cfg.getFuelLevel(P0)) setFuelLevel(P0);
+  else if (_intFuelCm > cfg.getFuelLevel(P20)) setFuelLevel(P20);
+  else if (_intFuelCm > cfg.getFuelLevel(P40)) setFuelLevel(P40);
+  else if (_intFuelCm > cfg.getFuelLevel(P60)) setFuelLevel(P60);
+  else if (_intFuelCm > cfg.getFuelLevel(P80)) setFuelLevel(P80);
   else setFuelLevel(P100);
 
   //battery level reading
-  byte battDVolts = (byte)_vDivVin(5500, 1000, _pinBattery)*10;
-  if (battDVolts > cfg.getBattLevel(P100)) setBattLevel(CHARGE);
-  else if (battDVolts > cfg.getBattLevel(P80)) setBattLevel(P100);
-  else if (battDVolts > cfg.getBattLevel(P60)) setBattLevel(P80);
-  else if (battDVolts > cfg.getBattLevel(P40)) setBattLevel(P60);
-  else if (battDVolts > cfg.getBattLevel(P20)) setBattLevel(P40);
-  else if (battDVolts > cfg.getBattLevel(P0)) setBattLevel(P20);
+  _intBattDVolts = (byte)_vDivVin(5500, 1000, _pinBattery)*10; //TODO: add diode max drop voltage on input
+  if (_intBattDVolts > cfg.getBattLevel(P100)) setBattLevel(CHARGE);
+  else if (_intBattDVolts > cfg.getBattLevel(P80)) setBattLevel(P100);
+  else if (_intBattDVolts > cfg.getBattLevel(P60)) setBattLevel(P80);
+  else if (_intBattDVolts > cfg.getBattLevel(P40)) setBattLevel(P60);
+  else if (_intBattDVolts > cfg.getBattLevel(P20)) setBattLevel(P40);
+  else if (_intBattDVolts > cfg.getBattLevel(P0)) setBattLevel(P20);
   else setBattLevel(P0);
 
 
@@ -76,12 +76,12 @@ void PitsBurner::_readSensors() {
     F("CurT=") + getCurrentTemp() + "C (" + (float(analogRead(_pinTBoiler)) / 1024 * 5) + "V) " + 
     F("->") + cfg.getRequiredTemp() + "C, " + 
     F("ExhT=") + getExhaustTemp() + " (" + (float(analogRead(_pinTExhaust)) / 1024 * 5) + "V), " +  
-    F("Flame=") + getFlame() + "% (" + (float(analogRead(_pinFlameSensor)) / 1024 * 5) + "V), " + 
-    F("FeedT=") + getFeederTemp() + "C (" + (float(analogRead(_pinTFeeder)) / 1024 * 5) + "V), " +
+    F("Flame=") + getFlame() + "% (" + (float(analogRead(_pinFlameSensor)) / 1024 * 5) + "V) ->" + cfg.getFlameLevel() + "%, " +
     F("NoFlame=") + getSecondsWithoutFlame() + "s, " + 
-    F("Fuel=") + getFuelLevel() + "% (" + fuelCm + ") " + // cfg.getFuelLevel(P0) + "," + cfg.getFuelLevel(P20) + "," + cfg.getFuelLevel(P40) + "," + cfg.getFuelLevel(P60) + "," + cfg.getFuelLevel(P80) + "," + cfg.getFuelLevel(P100) + 
-    F("Batt=") + getBattLevel() + "%, (" + battDVolts + ")" +
-    F("FeedAmps=") + getFeederAmps() + + "C (" + (float(analogRead(_pinFeedAmps)) / 1024 * 5) + "V), "
+    F("FeedT=") + getFeederTemp() + "C (" + (float(analogRead(_pinTFeeder)) / 1024 * 5) + "V), " +
+    F("Fuel=") + getFuelLevel() + "% (" + _intFuelCm + "cm), " + // cfg.getFuelLevel(P0) + "," + cfg.getFuelLevel(P20) + "," + cfg.getFuelLevel(P40) + "," + cfg.getFuelLevel(P60) + "," + cfg.getFuelLevel(P80) + "," + cfg.getFuelLevel(P100) + 
+    F("Batt=") + getBattLevel() + "%, (" + _intBattDVolts + "dcV), " +
+    F("FeedAmps=") + getFeederAmps() + + "A (" + (float(analogRead(_pinFeedAmps)) / 1024 * 5) + "V), "
     );
 #endif
 
@@ -160,7 +160,7 @@ void PitsBurner::_switchMode() {
   }
 
   //if exhaust sensor exists, if exhaust temperature more then  boiler temperature + allowed delta then idle
-  if (_intExhaustTemp > 0 && getCurrentMode() == MODE_HEAT && _intExhaustTemp  > getCurrentTemp() + cfg.getExhaustDeltaTemp()) {
+  if (getExhaustTemp() > 0 && getCurrentMode() == MODE_HEAT && getExhaustTemp()  > getCurrentTemp() + cfg.getExhaustDeltaTemp()) {
     #ifdef _BURNER_DEBUG_SERIAL_
       Serial.println(F("SwitchMode-IDLE because exhaust")); 
     #endif
@@ -170,14 +170,23 @@ void PitsBurner::_switchMode() {
 
   //TODO: if in idle mode longer than X hours then alarm (do we know use case for this?)
 
-  //if heating and reached requied temperature then idle
+  //if heating and reached requied temperature then clean and then idle
   if (getCurrentTemp() > (cfg.getRequiredTemp() + cfg.getHysteresisTemp())  && getCurrentMode() == MODE_HEAT) {
+    #ifdef _BURNER_DEBUG_SERIAL_
+      Serial.println(F("SwitchMode-CLEAN-temp reached")); 
+    #endif
+    setCurrentMode(MODE_CLEANING, ALARM_OK);
+    return;
+  }
+  else if (getSecondsInCurrentMode() > cfg.getFanCleanWorkS() && getCurrentMode() == MODE_CLEANING) {
     #ifdef _BURNER_DEBUG_SERIAL_
       Serial.println(F("SwitchMode-IDLE-temp reached")); 
     #endif
-    setCurrentMode(MODE_IDLE, ALARM_OK);
+    setCurrentMode(MODE_CLEANING, ALARM_OK);
     return;
   }
+
+  
 
   //if ignition and is flame then switch to heat 
   if (getCurrentMode() == MODE_IGNITION && isFlame()) {
@@ -255,7 +264,7 @@ void PitsBurner::setCurrentTemp(byte t) {
       Serial.print(F("->"));
       Serial.println(t);
     #endif
-    _intCurrentTemp = t;
+    _intCurrentTemp = (_intCurrentTemp + t) / 2;
   }
 }
 
@@ -271,7 +280,7 @@ void PitsBurner::setExhaustTemp(byte t) {
       Serial.print(F("->"));
       Serial.println(t);
     #endif
-    _intExhaustTemp = t;
+    _intExhaustTemp = (_intExhaustTemp + t) / 2; //floating average
   }
 }
 
@@ -291,17 +300,22 @@ void PitsBurner::setFlame(byte t) {
 
 void PitsBurner::updateLastFlameStatus() {
   if (isFlame() || MODE_MANUAL == getCurrentMode()) {
+    //Serial.println("Flame reset!");
     _uiTimeWithoutFlame = 0;
-  } else if (_uiTimeWithoutFlame == 0) {
-    _uiTimeWithoutFlame = millis();
+  } else if (_uiTimeWithoutFlame == 0) { //record when flame lost, once!
+    _uiTimeWithoutFlame = millis() / 1000.0; 
   }
 }
 
-unsigned int PitsBurner::getSecondsWithoutFlame() {
-  if (_uiTimeWithoutFlame == 0) return 0;
-
-  unsigned long timeWithoutFlameMillis = millis() - _uiTimeWithoutFlame;
-  return (unsigned int) (timeWithoutFlameMillis / 1000);
+short PitsBurner::getSecondsWithoutFlame() {
+  if (_uiTimeWithoutFlame == 0) { //if flame
+    return 0;
+  }
+  else { //if no flame
+    short noFlameDelta = millis() / 1000 - _uiTimeWithoutFlame;
+    //Serial.println(String("noFlameDelta: ") + noFlameDelta);
+    return noFlameDelta;
+  }
 }
 
 void PitsBurner::resetFlameTimer() {
@@ -342,13 +356,23 @@ void PitsBurner::setFeederTemp(byte t) {
       Serial.print(F("->"));
       Serial.println(t);
     #endif
-    _intFeederTemp = t;
+    _intFeederTemp = (_intFeederTemp + t) / 2;
   }
 }
 
 byte PitsBurner::getFeederTemp() {
   return _intFeederTemp;
 }
+
+short PitsBurner::getSecondsInCurrentMode() {
+  if (_uiModeTimer == 0) { //not set
+    return 0;
+  }
+  else { //set
+    return millis() / 1000 - _uiModeTimer;
+  }
+}
+
 
 PitsBurnerMode PitsBurner::getCurrentMode() {
   return _currentMode;
@@ -363,6 +387,9 @@ void PitsBurner::setCurrentMode(PitsBurnerMode newMode, PitsAlarmStatus newStatu
   //do nothing if this is same 
   if (newMode == _currentMode) return;
   
+  //set mode duration timer
+  _uiModeTimer = millis() / 1000;
+
   if (MODE_MANUAL == newMode) {
     onAlarmOff(); 
     _setAlarmStatus(newStatus);
@@ -456,8 +483,15 @@ void PitsBurner::onFan() {
       #ifdef _BURNER_DEBUG_SERIAL_
         Serial.print(F("in IGNITION"));
       #endif
-      interval = cfg.getFeedIgnitionDelayS() * TASK_SECOND + cfg.getFeedIgnitionWorkS() * TASK_SECOND; //sync to feed time
-      percent = cfg.getFanIgnitionOnP();
+      if (burner.getFan() == cfg.getFanIgnitionOnP()) { //if HIGH in idle
+        interval = (cfg.getFeedIgnitionWorkS() + cfg.getFeedIgnitionDelayS() - cfg.getFanIgnitionWorkS()) * TASK_SECOND; //sync to feed time
+        if (interval < 0) interval = 1 * TASK_SECOND; //fix if user configuration error
+        percent = cfg.getFanIgnitionOffP(); //set to LOW
+      }
+      else {
+        interval = cfg.getFanIgnitionWorkS() * TASK_SECOND; 
+        percent = cfg.getFanIgnitionOnP(); //set to HIGH
+      }
       break;
       
     case MODE_HEAT:
@@ -472,24 +506,28 @@ void PitsBurner::onFan() {
       #ifdef _BURNER_DEBUG_SERIAL_
         Serial.print(F("in IDLE"));
       #endif
-      if (burner.isFan()) { 
-        interval = cfg.getFeedIdleDelayS() * TASK_SECOND; //sync to feed time
-        percent = cfg.getFanIdleOffP(); //LOW;
+      if (burner.getFan() == cfg.getFanIdleOnP()) { //if HIGH in idle
+        interval = (cfg.getFeedIdleWorkS() + cfg.getFeedIdleDelayS() - cfg.getFanIdleWorkS()) * TASK_SECOND; //sync to feed time
+        if (interval < 0) interval = 1 * TASK_SECOND; //fix if user configuration error
+        percent = cfg.getFanIdleOffP(); //set to LOW
       }
       else {
-        interval = cfg.getFeedIdleWorkS() * TASK_SECOND; //sync to feed time
-        percent = cfg.getFanIdleOnP();
+        interval = cfg.getFanIdleWorkS() * TASK_SECOND; 
+        percent = cfg.getFanIdleOnP(); //set to HIGH
       }
       break;
 
     case MODE_CLEANING:
-        interval = 3 * TASK_SECOND; //recheck burner status after 
+        #ifdef _BURNER_DEBUG_SERIAL_
+          Serial.print(F("in CLEANING"));
+        #endif
+        interval = cfg.getFanCleanWorkS() * TASK_SECOND;
         percent = cfg.getFanCleanP();
       
       
     default: //in OTHER mode turn feed off
       #ifdef _BURNER_DEBUG_SERIAL_
-        Serial.print(F("in OTHER  "));
+        Serial.print(F("in OTHER "));
       #endif
       interval = 60 * TASK_SECOND; 
       percent = LOW;
@@ -594,9 +632,9 @@ void PitsBurner::onFeed() {
       
     default: //in OTHER modes no feed at all
       #ifdef _BURNER_DEBUG_SERIAL_
-        Serial.print(F("in OTHER  "));
+        Serial.print(F("in OTHER "));
       #endif
-      interval = 60 * TASK_SECOND; 
+      interval = 30 * TASK_SECOND; 
       feed = LOW;
       break;
   }
@@ -634,6 +672,11 @@ PERCENT_RANGE PitsBurner::getBattLevel()
   return _intBattLevel;
 }
 
+byte PitsBurner::getBattDVolts() 
+{
+  return _intBattDVolts;
+}
+
 void PitsBurner::setBattLevel(PERCENT_RANGE t) {
     #ifdef _BURNER_SET_DEBUG_SERIAL_
       Serial.print(F("Battery: "));
@@ -645,6 +688,11 @@ void PitsBurner::setBattLevel(PERCENT_RANGE t) {
 PERCENT_RANGE PitsBurner::getFuelLevel() 
 {
   return _intFuelLevel;
+}
+
+byte PitsBurner::getFuelCm() 
+{
+  return _intFuelCm;
 }
 
 void PitsBurner::setFuelLevel(PERCENT_RANGE t) {
@@ -753,7 +801,7 @@ Codesample - http://electronics.stackexchange.com/questions/188813/strange-resul
 Source - https://www.lemona.lv/?page=item&i_id=30742
 */                                
 float PitsBurner::_KTY81_110(byte pin) {
-  const int resistor = 2100; //charger 2600; //usb 1950; //2200 = 2K2 resistor, use resistors +/- 1% deviation 
+    const int resistor = 2050; //charger 2600; //usb 1950; //2200 = 2K2 resistor, use resistors +/- 1% deviation 
 
   float ukty = 5.0 * analogRead(pin) / 1023.0 ;
   float a = 0.01874;
@@ -777,7 +825,9 @@ float PitsBurner::_LDR04(byte pin) {
   short sensorValue = analogRead(pin);
   float Vout1 = sensorValue * (5.0/1023.0);      // calculate Voltage 1 (one unit = 5v / 1024)
   float Res2 = ((5.0  * Res1) / Vout1) - Res1;   // caclulate  Resistor 2
-  return (Res2 / (Res1 + Res2)) * 100;
+  float retVal = (Res2 / (Res1 + Res2)) * 100;
+  //Serial.println(String("_LDR04:") + retVal);
+  return retVal;
 }
 
 /*

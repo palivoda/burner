@@ -25,39 +25,39 @@ struct BurnerConfigData {
     byte _version = 4; //data structure version
 
     //alarm page
-    byte _intMaxTemp = 86;
+    byte _intMaxTemp = 90;
     byte _intMaxDropTemp = 10; 
 
     //temp page
-    byte _intRequiredTemp = 77;
+    byte _intRequiredTemp = 75;
     byte _intHysteresisTemp = 2;
     
     //exh page
-    byte _intExhDeltaTemp = 40;
+    byte _intExhDeltaTemp = 25;
 
     //feed page
     byte _intFeedIgnitionWorkS = 1;
     byte _intFeedIgnitionDelayS= 40;
-    byte _intFeedIgnitionP = 60;
+    byte _intFeedIgnitionP = 35;
     byte _intFeedHeatWorkS = 1;
-    byte _intFeedHeatDelayS = 6;
-    byte _intFeedHeatP = 60;
+    byte _intFeedHeatDelayS = 8;
+    byte _intFeedHeatP = 35;
     byte _intFeedIdleWorkS = 1;
-    byte _intFeedIdleDelayS = 90;
-    byte _intFeedIdleP = 60;
-    float _flFeedAmpsRev = 5.5; //TODO: not in UI
-    float _flFeedAmpsMax = 8.0; //TODO: not in UI
+    byte _intFeedIdleDelayS = 70;
+    byte _intFeedIdleP = 35;
+    float _flFeedAmpsRev = 5.5; 
+    float _flFeedAmpsMax = 8.0; 
 
     //fan page
-    byte _intFanIgnitionWorkS = 5;   //TODO: in UI, add to logic
+    byte _intFanIgnitionWorkS = 5;   
     byte _intFanIgnitionOnP = 50;
-    byte _intFanIgnitionOffP = 30;   //TODO: in UI, add to logic
+    byte _intFanIgnitionOffP = 30;   
     byte _intFanHeatP = 70;
-    byte _intFanIdleOnP = 35;        //if fan never turned off in idle then use this to kick start the fan, e.g > 25%
     byte _intFanIdleWorkS = 5;  
+    byte _intFanIdleOnP = 35;        //if fan never turned off in idle then use this to kick start the fan, e.g > 25%
     byte _intFanIdleOffP = 10;       //if > 0 then never stop the fan in idle, used if smoke is blowing back without fan
-    byte _intFanCleanWorkS = 10;     //TODO: in UI, add to logic
-    byte _intFanCleanP = 100;        //TODO: in UI, add to logic
+    byte _intFanCleanWorkS = 10;     
+    byte _intFanCleanP = 100;        
 
     //ignition page
     byte _intFlameLevel = 5; 
