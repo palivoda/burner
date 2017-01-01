@@ -66,7 +66,7 @@ void PitsBurner::_readSensors() {
   else setFuelLevel(P100);
 
   //battery level reading
-  _intBattDVolts = (byte)_vDivVin(5500, 835, _pinBattery)*10; //R2 actually is 1000, but calibrated value is 835.
+  _intBattDVolts = (byte)_vDivVin(5500, 1000, _pinBattery)*10; //R2 actually is 1000, but calibrated value is 1050.  
   if (_intBattDVolts > cfg.getBattLevel(P100)) setBattLevel(CHARGE);
   else if (_intBattDVolts > cfg.getBattLevel(P80)) setBattLevel(P100);
   else if (_intBattDVolts > cfg.getBattLevel(P60)) setBattLevel(P80);
@@ -85,7 +85,7 @@ void PitsBurner::_readSensors() {
     F("NoFlame=") + getSecondsWithoutFlame() + "s, " + 
     F("FeedT=") + getFeederTemp() + "C (" + (float(analogRead(_pinTFeeder)) / 1024 * 5) + "V), " +
     F("Fuel=") + getFuelLevel() + "% (" + _intFuelCm + "cm), " + // cfg.getFuelLevel(P0) + "," + cfg.getFuelLevel(P20) + "," + cfg.getFuelLevel(P40) + "," + cfg.getFuelLevel(P60) + "," + cfg.getFuelLevel(P80) + "," + cfg.getFuelLevel(P100) + 
-    F("Batt=") + getBattLevel() + "%, (" + _intBattDVolts + "dcV), " +
+    F("Batt=") + getBattLevel() + "%, (" + _intBattDVolts + "dcV, " + (float(analogRead(_pinBattery)) / 1023.0 * 5) + "V), " +
     F("FeedAmps=") + getFeederAmps() + + "A (" + (float(analogRead(_pinFeedAmps)) / 1024 * 5) + "V), "
     );
 #endif
@@ -142,11 +142,23 @@ void PitsBurner::_switchMode() {
   //if overheating then alarm
   if (getCurrentTemp() > cfg.getMaxTemp() && getCurrentMode() != MODE_ALARM) {
     #ifdef _BURNER_DEBUG_SERIAL_
-      Serial.println(F("SwitchMode-ALARM - overheat")); 
+      Serial.println(F("SwitchMode-ALARM - overheat boiler")); 
     #endif
     setCurrentMode(MODE_ALARM, ALARM_OVERHEAT);
     return;
   }  
+
+  //if burner temp overheat then alarm
+  //TODO: add to alarm display screen feeder temp alarm
+  /*
+  if (getFeederTemp() != 0 && getFeederTemp() > 80 && getCurrentMode() != MODE_ALARM) {
+    #ifdef _BURNER_DEBUG_SERIAL_
+      Serial.println(F("SwitchMode-ALARM - overheat feeder")); 
+    #endif
+    setCurrentMode(MODE_ALARM, ALARM_OVERHEAT_FEED);
+    return;
+  }
+  */
 
   //if no flame 3 minutes then switch to ignite
   //TODO: do not feed on switch to ignition - there already a lot of pellets to ignite.
@@ -160,7 +172,7 @@ void PitsBurner::_switchMode() {
   }
 
   //if ignition and no flame for 10 minutes then alarm
-  if (getCurrentMode() == MODE_IGNITION && getSecondsWithoutFlame() > 10*60) {
+  if (getCurrentMode() == MODE_IGNITION && getSecondsWithoutFlame() > 15*60) {
     #ifdef _BURNER_DEBUG_SERIAL_
       Serial.println(F("SwitchMode-ALARM-flame timeout"));
     #endif
@@ -191,11 +203,9 @@ void PitsBurner::_switchMode() {
     #ifdef _BURNER_DEBUG_SERIAL_
       Serial.println(F("SwitchMode-IDLE-temp reached")); 
     #endif
-    setCurrentMode(MODE_CLEANING, ALARM_OK);
+    setCurrentMode(MODE_IDLE, ALARM_OK);
     return;
   }
-
-  
 
   //if ignition and is flame then switch to heat 
   if (getCurrentMode() == MODE_IGNITION && isFlame()) {
@@ -207,7 +217,8 @@ void PitsBurner::_switchMode() {
   }
 
   //if under required temperature then heat
-  if (getCurrentMode() == MODE_IDLE && getCurrentTemp() < (cfg.getRequiredTemp()  - cfg.getHysteresisTemp())) {
+  if ( (getCurrentMode() == MODE_IDLE && getCurrentTemp() < (cfg.getRequiredTemp()  - cfg.getHysteresisTemp())) &&
+       (getExhaustTemp() == 0 || getExhaustTemp()  < getCurrentTemp())   ) {
     #ifdef _BURNER_DEBUG_SERIAL_
       Serial.println(F("SwitchMode-HEAT-under required temperature")); 
     #endif
@@ -442,7 +453,7 @@ void PitsBurner::setCurrentMode(PitsBurnerMode newMode, PitsAlarmStatus newStatu
     else tIgniter.disable();
     
     //min temperature should not go down in heat mode
-    _intMinTemp = (MODE_HEAT == newMode) ? _intCurrentTemp - cfg.getMaxDropTemp() : 0; 
+    _intMinTemp = (MODE_HEAT == newMode && _intCurrentTemp > cfg.getMaxDropTemp()) ? _intCurrentTemp - cfg.getMaxDropTemp() : 0; 
 
   }
 }
@@ -450,7 +461,7 @@ void PitsBurner::setCurrentMode(PitsBurnerMode newMode, PitsAlarmStatus newStatu
 //Setup theme - http://bildr.org/2012/03/rfp30n06le-arduino/
 //Fan model - http://www.nmbtc.com/pdf/catalogs/Fan_and_Blowers_Catalog_Full.pdf  
 void PitsBurner::setFan(byte percent) {
-  burner._intFan = (byte)((float(percent) / 100.0) * 255.0);
+  burner._intFan = (byte)roundf(float(percent) * 255.0 / 100);
   analogWrite(_pinFan, burner._intFan); 
   #ifdef _BURNER_SET_DEBUG_SERIAL_
     Serial.print(F("Fan is at: "));
@@ -461,7 +472,7 @@ void PitsBurner::setFan(byte percent) {
 }
 
 byte PitsBurner::getFan() {
-  return byte(float(_intFan) / 255 * 100);
+  return (byte)roundf(float(_intFan) * 100 / 255);
 }
 
 bool PitsBurner::isFan() {
@@ -474,7 +485,7 @@ void PitsBurner::onFan() {
     Serial.print(F("OnFan: "));
   #endif
   
-  unsigned int interval;
+  unsigned long interval;
   byte percent;
   bool change = true;
   
@@ -490,7 +501,11 @@ void PitsBurner::onFan() {
       
     case MODE_IGNITION:
       #ifdef _BURNER_DEBUG_SERIAL_
-        Serial.print(F("in IGNITION"));
+        Serial.print(F("in IGNITION "));
+        //TODO: does not switch to Fan Igntion Off!!!
+        Serial.print(burner.getFan());
+        Serial.print("?=");
+        Serial.print(cfg.getFanIgnitionOnP());
       #endif
       if (burner.getFan() == cfg.getFanIgnitionOnP()) { //if HIGH in idle
         interval = (cfg.getFeedIgnitionWorkS() + cfg.getFeedIgnitionDelayS() - cfg.getFanIgnitionWorkS()) * TASK_SECOND; //sync to feed time
@@ -513,7 +528,10 @@ void PitsBurner::onFan() {
       
     case MODE_IDLE:
       #ifdef _BURNER_DEBUG_SERIAL_
-        Serial.print(F("in IDLE"));
+        Serial.print(F("in IDLE "));
+        Serial.print(burner.getFan());
+        Serial.print("?=");
+        Serial.print(cfg.getFanIdleOnP());
       #endif
       if (burner.getFan() == cfg.getFanIdleOnP()) { //if HIGH in idle
         interval = (cfg.getFeedIdleWorkS() + cfg.getFeedIdleDelayS() - cfg.getFanIdleWorkS()) * TASK_SECOND; //sync to feed time
@@ -527,13 +545,22 @@ void PitsBurner::onFan() {
       break;
 
     case MODE_CLEANING:
-        #ifdef _BURNER_DEBUG_SERIAL_
-          Serial.print(F("in CLEANING"));
-        #endif
-        interval = cfg.getFanCleanWorkS() * TASK_SECOND;
-        percent = cfg.getFanCleanP();
+      #ifdef _BURNER_DEBUG_SERIAL_
+        Serial.print(F("in CLEANING"));
+      #endif
+      interval = cfg.getFanCleanWorkS() * TASK_SECOND;
+      percent = cfg.getFanCleanP();
+      break;
       
-      
+    case MODE_ALARM: 
+      #ifdef _BURNER_DEBUG_SERIAL_
+        Serial.print(F("in ALARM"));
+      #endif
+      interval = 30 * TASK_SECOND; 
+      //TODO: get calues from config and add values to display configuration
+      percent = burner.getFeederTemp() > 35 ? cfg.getFanIdleOffP() : 0; //keep fan ON until temp drops 
+      break;
+
     default: //in OTHER mode turn feed off
       #ifdef _BURNER_DEBUG_SERIAL_
         Serial.print(F("in OTHER "));
@@ -561,7 +588,7 @@ void PitsBurner::onFan() {
 }
 
 void PitsBurner::setFeed(byte percent) {
-  _intFeeder = byte((float(percent) / 100) * 255);
+  _intFeeder = (byte)roundf(float(percent) * 255 / 100);
   analogWrite(_pinFeeder, _intFeeder); 
   #ifdef _BURNER_SET_DEBUG_SERIAL_
     Serial.print(F("Feed is at: "));
@@ -572,7 +599,7 @@ void PitsBurner::setFeed(byte percent) {
 }
 
 byte PitsBurner::getFeed() {
-  return byte(float(_intFeeder ) / 255 * 100);
+  return (byte)roundf(float(_intFeeder ) * 100 / 255 );
 }
 
 bool PitsBurner::isFeed() {
@@ -584,7 +611,7 @@ void PitsBurner::onFeed() {
     Serial.print(F("OnFeed: "));
   #endif
   
-  int interval;
+  unsigned long interval; //max value could be 200k
   byte feed;
   bool change = true;
   
@@ -627,7 +654,13 @@ void PitsBurner::onFeed() {
       
     case MODE_IDLE:
       #ifdef _BURNER_DEBUG_SERIAL_
-        Serial.print(F("in IDLE "));
+        Serial.print(F("in IDLE ("));
+        Serial.print(cfg.getFeedIdleDelayS());
+        Serial.print(",");
+        Serial.print(cfg.getFeedIdleWorkS());
+        Serial.print(",");
+        Serial.print(cfg.getFeedIdleP());
+        Serial.print(") ");
       #endif
       if (burner.isFeed()) {
         interval = cfg.getFeedIdleDelayS() * TASK_SECOND;
@@ -810,9 +843,9 @@ Codesample - http://electronics.stackexchange.com/questions/188813/strange-resul
 Source - https://www.lemona.lv/?page=item&i_id=30742
 */                                
 float PitsBurner::_KTY81_110(byte pin) {
-    const int resistor = 2050; //charger 2600; //usb 1950; //2200 = 2K2 resistor, use resistors +/- 1% deviation 
+    const int resistor = 2120; //charger 2600; //usb 1950; //2200 = 2K2 resistor, use resistors +/- 1% deviation 
 
-  float ukty = 5.0 * analogRead(pin) / 1023.0 ;
+  float ukty = 5.1 * analogRead(pin) / 1023.0 ;
   float a = 0.01874;
   float b = 7.884;
   float c = 1000 - resistor * ukty / (5 - ukty);

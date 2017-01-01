@@ -12,6 +12,7 @@ class NexDisplay
 {
   public:
     void init();
+    void loadConfig();
     void refresh();
     void loop();
 };

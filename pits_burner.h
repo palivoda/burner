@@ -30,6 +30,7 @@ enum PitsAlarmStatus { //numbers used in display pMain.tmUpdate
   ALARM_IGNITION_FAILED = 5,
   ALARM_OVERHEAT = 6,
   ALARM_FEED_STUCK = 7, 
+  ALARM_OVERHEAT_FEED = 8,
 };
 
 class PitsBurner

@@ -22,14 +22,14 @@ enum PERCENT_RANGE {
 
 struct BurnerConfigData {
 
-    byte _version = 4; //data structure version
+    byte _version = 5; //data structure version
 
     //alarm page
-    byte _intMaxTemp = 90;
+    byte _intMaxTemp = 95;
     byte _intMaxDropTemp = 10; 
 
     //temp page
-    byte _intRequiredTemp = 75;
+    byte _intRequiredTemp = 70;
     byte _intHysteresisTemp = 2;
     
     //exh page
@@ -38,15 +38,15 @@ struct BurnerConfigData {
     //feed page
     byte _intFeedIgnitionWorkS = 1;
     byte _intFeedIgnitionDelayS= 40;
-    byte _intFeedIgnitionP = 35;
+    byte _intFeedIgnitionP = 50;
     byte _intFeedHeatWorkS = 1;
     byte _intFeedHeatDelayS = 8;
-    byte _intFeedHeatP = 35;
+    byte _intFeedHeatP = 50;
     byte _intFeedIdleWorkS = 1;
-    byte _intFeedIdleDelayS = 70;
-    byte _intFeedIdleP = 35;
-    float _flFeedAmpsRev = 5.5; 
-    float _flFeedAmpsMax = 8.0; 
+    byte _intFeedIdleDelayS = 120;
+    byte _intFeedIdleP = 50;
+    byte _flFeedAmpsRev = 55; 
+    byte _flFeedAmpsMax = 80; 
 
     //fan page
     byte _intFanIgnitionWorkS = 5;   
@@ -60,11 +60,11 @@ struct BurnerConfigData {
     byte _intFanCleanP = 100;        
 
     //ignition page
-    byte _intFlameLevel = 5; 
+    byte _intFlameLevel = 15; 
     byte _intFlameTimoutS = 180;   
-    byte _intIgniterStartS = 7;
-    byte _intIgniterDelayS = 8;
-    byte _intIgniterWorkS = 5;
+    byte _intIgniterStartS = 8;
+    byte _intIgniterDelayS = 5;
+    byte _intIgniterWorkS = 6;
 
     //fuel (cm)
     byte _intFuel100 = 20;
@@ -86,8 +86,8 @@ struct BurnerConfigData {
     byte _intPumpOnTemp = 40; //TODO: not in UI
 
     //ethernet
-    uint16_t _netPin = 7532; //authorization for commands execution
-    uint16_t _netId = 32767; //id for posting data to server
+    short _netPin = 7532; //authorization for commands execution
+    short _netId = 32767; //id for posting data to server
 };
 
 class BurnerConfig {

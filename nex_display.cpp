@@ -11,8 +11,8 @@ extern PitsBurner burner;
 #include "burner_config.h"
 extern BurnerConfig cfg;
 
-uint32_t _rv = 0; //number read buffer
-const byte _timeout = 100; //ms
+static uint32_t _rv = 0; //number read buffer
+const short _timeout = 2500; //ms
 
 void nxPrintFF() {
     for (byte i=1; i<=3;i++) {
@@ -159,6 +159,7 @@ void bSaveCallback(void *ptr)
     String msg;
     if (bRead && cfg.store()) {
       msg="Saved!";
+      nexdisp.loadConfig();
       burner.beep();
     }
     else msg="Failed!";
@@ -170,13 +171,13 @@ void bBurnerModeCallback(void *ptr)
 {
     recvRetNumber(&_rv, _timeout);
     switch (_rv) {
-      case 1: burner.setCurrentMode(MODE_MANUAL, ALARM_OK); break;
-      case 2: burner.setCurrentMode(MODE_IGNITION, ALARM_OK); break;
-      case 3: burner.setCurrentMode(MODE_HEAT, ALARM_OK); break;
-      case 4: burner.setCurrentMode(MODE_IDLE, ALARM_OK); break;
-      case 5: burner.setCurrentMode(MODE_CLEANING, ALARM_OK); break;
-      case 6: burner.setCurrentMode(MODE_ALARM, ALARM_MANUAL); break;
-      case 11: burner.setFeed(cfg.getFeedHeatP()); burner.beep();; break;
+      case 1: burner.setCurrentMode(MODE_MANUAL, ALARM_OK); burner.beep(); break;
+      case 2: burner.setCurrentMode(MODE_IGNITION, ALARM_OK); burner.beep(); break;
+      case 3: burner.setCurrentMode(MODE_HEAT, ALARM_OK); burner.beep(); break;
+      case 4: burner.setCurrentMode(MODE_IDLE, ALARM_OK); burner.beep(); break;
+      case 5: burner.setCurrentMode(MODE_CLEANING, ALARM_OK); burner.beep(); break;
+      case 6: burner.setCurrentMode(MODE_ALARM, ALARM_MANUAL); burner.beep(); break;
+      case 11: burner.setFeed(cfg.getFeedHeatP()); burner.beep(); break;
       case 10: burner.setFeed(LOW); burner.beep(); break;
       case 21: burner.setFan(cfg.getFanHeatP()); burner.beep(); break;
       case 20: burner.setFan(LOW); burner.beep(); break;
@@ -198,7 +199,22 @@ void NexDisplay::init() {
     
     bSaveConfig.attachPop(bSaveCallback);
     bBurnerMode.attachPop(bBurnerModeCallback);
+    
+    loadConfig();
+    
+    /*
+    nxSendValue(F("rtc0"), ); //year
+    nxSendValue(F("rtc1"), ); //month
+    nxSendValue(F("rtc2"), ); //date
+    nxSendValue(F("rtc3"), ); //hour
+    nxSendValue(F("rtc4"), ); //minute
+    */
+    
+    refresh();
+}
 
+void NexDisplay::loadConfig() {
+    
     //init variables from EEPROM config
     nxSendValue(pAlarm, F("vAlarmMax"), cfg.getMaxTemp());
     nxSendValue(pAlarm, F("vAlarmDrop"), cfg.getMaxDropTemp());
@@ -240,16 +256,7 @@ void NexDisplay::init() {
     nxSendValue(pBat, F("vBatLvl40"), cfg.getBattLevel(P40));
     nxSendValue(pBat, F("vBatLvl20"), cfg.getBattLevel(P20));
     nxSendValue(pBat, F("vBatLvl0"), cfg.getBattLevel(P0));
-
-    /*
-    nxSendValue(F("rtc0"), ); //year
-    nxSendValue(F("rtc1"), ); //month
-    nxSendValue(F("rtc2"), ); //date
-    nxSendValue(F("rtc3"), ); //hour
-    nxSendValue(F("rtc4"), ); //minute
-    */
     
-    refresh();
 }
 
 void NexDisplay::refresh() {
@@ -274,7 +281,7 @@ void NexDisplay::refresh() {
     nxSendValue(pMain, F("nMinT"), burner.getMinTemp()); 
     
 
-    String state;
+    String state = "";
     switch (burner.getCurrentMode()) {
       case MODE_MANUAL: state += F("Manual"); break;
       case MODE_IGNITION: state += F("Ignition"); break;
@@ -289,6 +296,7 @@ void NexDisplay::refresh() {
       case ALARM_NOFLAME: state += F(": No flame"); break;
       case ALARM_IGNITION_FAILED: state += F(": Ignition failed"); break;
       case ALARM_OVERHEAT: state += F(": Overheat"); break;
+      case ALARM_OVERHEAT_FEED: state += F(": Feed temp"); break;
       case ALARM_MANUAL: state += F(": Manual"); break;
     }
     nxSendMessage(state.c_str());
