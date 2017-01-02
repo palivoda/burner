@@ -33,17 +33,17 @@ struct BurnerConfigData {
     byte _intHysteresisTemp = 2;
     
     //exh page
-    byte _intExhDeltaTemp = 25;
+    byte _intExhDeltaTemp = 35; //TODO: add Max Exhaust and Min Exhaust deltas. 
 
     //feed page
     byte _intFeedIgnitionWorkS = 1;
-    byte _intFeedIgnitionDelayS= 40;
+    byte _intFeedIgnitionDelayS= 60;
     byte _intFeedIgnitionP = 50;
     byte _intFeedHeatWorkS = 1;
-    byte _intFeedHeatDelayS = 8;
+    byte _intFeedHeatDelayS = 15;
     byte _intFeedHeatP = 50;
     byte _intFeedIdleWorkS = 1;
-    byte _intFeedIdleDelayS = 120;
+    byte _intFeedIdleDelayS = 160;
     byte _intFeedIdleP = 50;
     byte _flFeedAmpsRev = 55; 
     byte _flFeedAmpsMax = 80; 
@@ -56,23 +56,23 @@ struct BurnerConfigData {
     byte _intFanIdleWorkS = 5;  
     byte _intFanIdleOnP = 35;        //if fan never turned off in idle then use this to kick start the fan, e.g > 25%
     byte _intFanIdleOffP = 10;       //if > 0 then never stop the fan in idle, used if smoke is blowing back without fan
-    byte _intFanCleanWorkS = 10;     
+    byte _intFanCleanWorkS = 30;     
     byte _intFanCleanP = 100;        
 
     //ignition page
     byte _intFlameLevel = 15; 
-    byte _intFlameTimoutS = 180;   
+    short _intFlameTimoutS = 240;   
     byte _intIgniterStartS = 8;
     byte _intIgniterDelayS = 5;
     byte _intIgniterWorkS = 6;
 
     //fuel (cm)
-    byte _intFuel100 = 20;
-    byte _intFuel80 = 40;
-    byte _intFuel60 = 60;
-    byte _intFuel40 = 80;
-    byte _intFuel20 = 100;
-    byte _intFuel0 = 120;
+    byte _intFuel100 = 33;
+    byte _intFuel80 = 47;
+    byte _intFuel60 = 61;
+    byte _intFuel40 = 75;
+    byte _intFuel20 = 89;
+    byte _intFuel0 = 103;
     
     //battery (dcV)
     byte _intBatt100 = 127;

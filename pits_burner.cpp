@@ -32,6 +32,8 @@ void PitsBurner::init() {
 
   //check buzzer
   beep();
+
+  setCurrentMode(MODE_IDLE, ALARM_OK);
 }
 
 void PitsBurner::beep() {
@@ -66,7 +68,8 @@ void PitsBurner::_readSensors() {
   else setFuelLevel(P100);
 
   //battery level reading
-  _intBattDVolts = (byte)_vDivVin(5500, 1000, _pinBattery)*10; //R2 actually is 1000, but calibrated value is 1050.  
+  _intBattDVolts = (byte)roundf(_vDivVin(5500, 2200, _pinBattery)*10); //R2 actually is 2200ohm, but calibrated value is different.  
+  _intBattDVolts += 10; //diode 1N1007 in 12 input reduces by 10dcV
   if (_intBattDVolts > cfg.getBattLevel(P100)) setBattLevel(CHARGE);
   else if (_intBattDVolts > cfg.getBattLevel(P80)) setBattLevel(P100);
   else if (_intBattDVolts > cfg.getBattLevel(P60)) setBattLevel(P80);
@@ -77,7 +80,7 @@ void PitsBurner::_readSensors() {
 
 
 #ifdef _BURNER_DEBUG_SERIAL_
-  Serial.println(String("ReadSensors: ") + 
+  Serial.println(String("ReadSensors ") + getSecondsInCurrentMode() + ": " +
     F("CurT=") + getCurrentTemp() + "C (" + (float(analogRead(_pinTBoiler)) / 1024 * 5) + "V) " + 
     F("->") + cfg.getRequiredTemp() + "C, " + 
     F("ExhT=") + getExhaustTemp() + " (" + (float(analogRead(_pinTExhaust)) / 1024 * 5) + "V), " +  
@@ -218,7 +221,8 @@ void PitsBurner::_switchMode() {
 
   //if under required temperature then heat
   if ( (getCurrentMode() == MODE_IDLE && getCurrentTemp() < (cfg.getRequiredTemp()  - cfg.getHysteresisTemp())) &&
-       (getExhaustTemp() == 0 || getExhaustTemp()  < getCurrentTemp())   ) {
+       (getExhaustTemp() == 0 || getExhaustTemp()  < getCurrentTemp()) &&
+       isCurrentModeStable() ) {
     #ifdef _BURNER_DEBUG_SERIAL_
       Serial.println(F("SwitchMode-HEAT-under required temperature")); 
     #endif
@@ -384,6 +388,15 @@ byte PitsBurner::getFeederTemp() {
   return _intFeederTemp;
 }
 
+void PitsBurner::resetSecondsInCurrentMode()
+{
+  #ifdef _BURNER_DEBUG_SERIAL_
+    Serial.print(F("Reset seconds in current mode to "));
+    Serial.println(_uiModeTimer);
+  #endif
+  _uiModeTimer = millis() / 1000;
+}
+
 short PitsBurner::getSecondsInCurrentMode() {
   if (_uiModeTimer == 0) { //not set
     return 0;
@@ -391,6 +404,11 @@ short PitsBurner::getSecondsInCurrentMode() {
   else { //set
     return millis() / 1000 - _uiModeTimer;
   }
+}
+
+bool PitsBurner::isCurrentModeStable() 
+{
+  return getSecondsInCurrentMode() > _uiStableMode;
 }
 
 
@@ -407,9 +425,9 @@ void PitsBurner::setCurrentMode(PitsBurnerMode newMode, PitsAlarmStatus newStatu
   //do nothing if this is same 
   if (newMode == _currentMode) return;
   
-  //set mode duration timer
-  _uiModeTimer = millis() / 1000;
-
+  //reset mode duration timer
+  resetSecondsInCurrentMode();
+  
   if (MODE_MANUAL == newMode) {
     onAlarmOff(); 
     _setAlarmStatus(newStatus);
@@ -628,7 +646,7 @@ void PitsBurner::onFeed() {
       #ifdef _BURNER_DEBUG_SERIAL_
         Serial.print(F("in IGNITION "));
       #endif
-      if (burner.isFeed()) {
+      if (burner.isFeed() || !burner.isCurrentModeStable()) { //skip feed on first seconds in mode
         interval = cfg.getFeedIgnitionDelayS() * TASK_SECOND;
         feed = LOW;
       }
@@ -642,7 +660,7 @@ void PitsBurner::onFeed() {
       #ifdef _BURNER_DEBUG_SERIAL_
         Serial.print(F("in HEAT "));
       #endif
-      if (burner.isFeed()) {
+      if (burner.isFeed() || !burner.isCurrentModeStable()) {
         interval = cfg.getFeedHeatDelayS() * TASK_SECOND;
         feed = LOW;
       }
@@ -655,14 +673,14 @@ void PitsBurner::onFeed() {
     case MODE_IDLE:
       #ifdef _BURNER_DEBUG_SERIAL_
         Serial.print(F("in IDLE ("));
-        Serial.print(cfg.getFeedIdleDelayS());
-        Serial.print(",");
-        Serial.print(cfg.getFeedIdleWorkS());
-        Serial.print(",");
-        Serial.print(cfg.getFeedIdleP());
-        Serial.print(") ");
+        //Serial.print(cfg.getFeedIdleDelayS());
+        //Serial.print(",");
+        //Serial.print(cfg.getFeedIdleWorkS());
+        //Serial.print(",");
+        //Serial.print(cfg.getFeedIdleP());
+        //Serial.print(") ");
       #endif
-      if (burner.isFeed()) {
+      if (burner.isFeed() || !burner.isCurrentModeStable()) { //skip feed on first seconds in mode
         interval = cfg.getFeedIdleDelayS() * TASK_SECOND;
         feed = LOW;
       }

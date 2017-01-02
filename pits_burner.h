@@ -10,7 +10,7 @@
 
 #include "burner_config.h"
 
-#define _BURNER_DEBUG_SERIAL_
+//#define _BURNER_DEBUG_SERIAL_
 //#define _BURNER_SET_DEBUG_SERIAL_
 
 enum PitsBurnerMode {
@@ -95,7 +95,10 @@ class PitsBurner
     PitsAlarmStatus getAlarmStatus();
     PitsBurnerMode getCurrentMode();
     void setCurrentMode(PitsBurnerMode, PitsAlarmStatus);
+    
     short getSecondsInCurrentMode();
+    void resetSecondsInCurrentMode();
+    bool isCurrentModeStable();
     
   private:
     void _readSensors();
@@ -141,14 +144,15 @@ class PitsBurner
     unsigned int _intFeedTime = 0;            //total feed seconds counter, reset on power off
     byte _intFeeder = LOW;
     byte _intFan = LOW;
-    PitsBurnerMode _currentMode = MODE_IDLE;
+    PitsBurnerMode _currentMode;
     byte _intMinTemp = 0;                     //on HEAT cycle start set to current temp
     bool _boolIgnition = false;
     short _uiTimeWithoutFlame = 0;            //seconds when flame was off (first time)
-    PitsAlarmStatus _alarmStatus = ALARM_OK;
+    PitsAlarmStatus _alarmStatus;
     bool _boolPumpUPS = false;
     bool _boolFeedRev = false;
     short _uiModeTimer = 0;                //duration in current mode, 0 if not
+    const byte _uiStableMode = 2;          //seconds for mode stablization
         
 };
 
