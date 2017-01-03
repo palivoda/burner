@@ -183,8 +183,8 @@ void PitsBurner::_switchMode() {
     return;
   }
 
-  //if exhaust sensor exists, if exhaust temperature more then  boiler temperature + allowed delta then idle
-  if (getCurrentMode() == MODE_HEAT && getExhaustTemp() > 0 && getExhaustTemp()  > getCurrentTemp() + cfg.getExhaustDeltaTemp()) {
+  //if exhaust sensor exists, if exhaust temperature more than required temperature + allowed delta then idle
+  if (getCurrentMode() == MODE_HEAT && getExhaustTemp() > 0 && getExhaustTemp()  > cfg.getRequiredTemp() + cfg.getExhaustDeltaTemp()) {
     #ifdef _BURNER_DEBUG_SERIAL_
       Serial.println(F("SwitchMode-IDLE because exhaust")); 
     #endif
@@ -221,7 +221,7 @@ void PitsBurner::_switchMode() {
 
   //if under required temperature then heat
   if ( (getCurrentMode() == MODE_IDLE && getCurrentTemp() < (cfg.getRequiredTemp()  - cfg.getHysteresisTemp())) &&
-       (getExhaustTemp() == 0 || getExhaustTemp()  < getCurrentTemp()) &&
+       (getExhaustTemp() == 0 || getExhaustTemp()  <= cfg.getRequiredTemp()) &&
        isCurrentModeStable() ) {
     #ifdef _BURNER_DEBUG_SERIAL_
       Serial.println(F("SwitchMode-HEAT-under required temperature")); 
