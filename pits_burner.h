@@ -55,8 +55,8 @@ class PitsBurner
     byte getExhaustTemp();
     void setFeederTemp(byte);   //to overwrite sensors value
     byte getFeederTemp();
-    void setFeederAmps(float);   //to overwrite sensors value
-    float getFeederAmps();
+    void setFeederAmps(byte);   //to overwrite sensors value
+    byte getFeederAmps();
     byte getMinTemp();          //caclualted during heat start
     
     void setFlame(byte);        //to overwrite sensors value
@@ -138,7 +138,7 @@ class PitsBurner
     byte _intBattDVolts = 0;  
     PERCENT_RANGE _intFuelLevel = P0;
     byte _intFuelCm = 0;  
-    float _flFeedAmps[3] = {0,0,0};
+    byte _flFeedAmps[3] = {0,0,0};
     
     //object internal states
     unsigned int _intFeedTime = 0;            //total feed seconds counter, reset on power off

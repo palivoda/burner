@@ -8,7 +8,7 @@
 
 #include <Arduino.h>
 
-//#define _BURNER_CONFIG_DEBUG
+#define _BURNER_CONFIG_DEBUG
 
 enum PERCENT_RANGE {
   CHARGE = 101,
@@ -22,7 +22,7 @@ enum PERCENT_RANGE {
 
 struct BurnerConfigData {
 
-    byte _version = 5; //data structure version
+    byte _version = 6; //data structure version
 
     //alarm page
     byte _intMaxTemp = 95;

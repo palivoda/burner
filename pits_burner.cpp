@@ -56,7 +56,7 @@ void PitsBurner::_readSensors() {
   setFeederTemp((byte)_KTY81_110(_pinTFeeder));
   setFlame((byte)_LDR04(_pinFlameSensor));
   updateLastFlameStatus();
-  setFeederAmps(_ACS712(_pinFeedAmps));
+  setFeederAmps(_ACS712(_pinFeedAmps) * 10); //convert to dcAmps
 
   //fuel level reading 
   _intFuelCm = _HYSRF05(_pinFuelTrig, _pinFuelEcho);
@@ -358,7 +358,7 @@ bool PitsBurner::isFlame() {
   return _intFlame > cfg.getFlameLevel(); 
 }
 
-void PitsBurner::setFeederAmps(float t) {
+void PitsBurner::setFeederAmps(byte t) {
   #ifdef _BURNER_SET_DEBUG_SERIAL_
     Serial.print(F("FeederAmps: "));
     Serial.println(t);
@@ -368,7 +368,7 @@ void PitsBurner::setFeederAmps(float t) {
   _flFeedAmps[0] = t;
 }
 
-float PitsBurner::getFeederAmps() {
+byte PitsBurner::getFeederAmps() {
   return (_flFeedAmps[0] + _flFeedAmps[1] + _flFeedAmps[2]) / 3;
 }
 

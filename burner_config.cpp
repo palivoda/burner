@@ -39,6 +39,7 @@ void BurnerConfig::reset() {
   BurnerConfigData newData;
   _data = newData;
   store();
+  load();
 }
 
 void BurnerConfig::setMaxTemp(byte v) 

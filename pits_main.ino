@@ -18,7 +18,7 @@ void onPulse();
 Task tRefresh(1*TASK_SECOND, TASK_FOREVER, &onPulse, &scheduler, true);
 
 void setup() {
-  Serial.begin(9600); //same as Nextion baud rate (its on same RX/TX pins
+  Serial.begin(115200); //same as Nextion baud rate (its on same RX/TX pins
   //cfg.reset(); //uncommend once if you need to reset config
   cfg.load();
   nexdisp.init();
@@ -34,6 +34,6 @@ void loop() {
 
 void onPulse() {
   burner.operate();
-   nexdisp.refresh();
+  nexdisp.refresh();
 }
 
