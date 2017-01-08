@@ -8,7 +8,7 @@
 
 #include <Arduino.h>
 
-#define _NEXDISPLAY_DEBUG_SERIAL_
+//#define _NEXDISPLAY_DEBUG_SERIAL_
 
 
 enum NX_PAGE{

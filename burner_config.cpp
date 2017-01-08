@@ -36,10 +36,25 @@ void BurnerConfig::reset() {
   #ifdef _BURNER_CONFIG_DEBUG
     Serial.println(F("Config RESET"));
   #endif
+
   BurnerConfigData newData;
+  newData._hid = _data._hid;
   _data = newData;
   store();
   load();
+}
+
+uint32_t BurnerConfig::getHID() 
+{
+  return _data._hid;  
+}
+
+void BurnerConfig::generateHID() {
+  //_data._hid=0;
+  if (_data._hid == 0) { //set serial number (once)
+    _data._hid=(uint32_t)random()*2147483647;
+    store();
+  }  
 }
 
 void BurnerConfig::setMaxTemp(byte v) 

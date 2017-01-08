@@ -8,7 +8,7 @@
 
 #include <Arduino.h>
 
-#define _BURNER_CONFIG_DEBUG
+//#define _BURNER_CONFIG_DEBUG
 
 enum PERCENT_RANGE {
   CHARGE = 101,
@@ -22,7 +22,8 @@ enum PERCENT_RANGE {
 
 struct BurnerConfigData {
 
-    byte _version = 6; //data structure version
+    byte _version = 7; //data structure version
+    uint32_t _hid=0;
 
     //alarm page
     byte _intMaxTemp = 95;
@@ -39,7 +40,7 @@ struct BurnerConfigData {
     byte _intFeedIgnitionWorkS = 1;
     byte _intFeedIgnitionDelayS= 60;
     byte _intFeedIgnitionP = 50;
-    byte _intFeedHeatWorkS = 1;
+    byte _intFeedHeatWorkS = 2;
     byte _intFeedHeatDelayS = 15;
     byte _intFeedHeatP = 50;
     byte _intFeedIdleWorkS = 1;
@@ -100,6 +101,9 @@ class BurnerConfig {
     bool load();
     bool store();
     void reset();
+
+    uint32_t getHID();
+    void generateHID();
 
     void setMaxTemp(byte);
     byte getMaxTemp();

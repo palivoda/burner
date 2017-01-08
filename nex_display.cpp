@@ -88,6 +88,7 @@ void NexDisplay::loop() {
 void NexDisplay::loadConfig() {
 
     //init variables from EEPROM config
+    __nxSendNumber(pServ, F("nHID"), cfg.getHID());
     __nxSendNumber(pAlarm, F("vAlarmMax"), cfg.getMaxTemp());
     __nxSendNumber(pAlarm, F("vAlarmDrop"), cfg.getMaxDropTemp());
     __nxSendNumber(pTemps, F("vReqTemp"), cfg.getRequiredTemp());
