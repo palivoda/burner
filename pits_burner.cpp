@@ -860,6 +860,7 @@ float PitsBurner::_ACS712(byte pin) {
 
   //if (amps > 4) Serial.println(">>>>>>>>>>> HIGH!!!!");
   //Serial.println(String("ACS712 ") + pin + "=" + rawVal + " => " + mVolts + "mV, " + amps  + "A");
+  return amps;
 }
 
 

@@ -27,11 +27,11 @@ struct BurnerConfigData {
 
     //alarm page
     byte _intMaxTemp = 95;
-    byte _intMaxDropTemp = 10; 
+    byte _intMaxDropTemp = 20; 
 
     //temp page
-    byte _intRequiredTemp = 70;
-    byte _intHysteresisTemp = 2;
+    byte _intRequiredTemp = 75;
+    byte _intHysteresisTemp = 1;
     
     //exh page
     byte _intExhDeltaTemp = 35; //TODO: add Max Exhaust and Min Exhaust deltas. 
@@ -39,13 +39,13 @@ struct BurnerConfigData {
     //feed page
     byte _intFeedIgnitionWorkS = 1;
     byte _intFeedIgnitionDelayS= 60;
-    byte _intFeedIgnitionP = 50;
-    byte _intFeedHeatWorkS = 2;
-    byte _intFeedHeatDelayS = 15;
-    byte _intFeedHeatP = 50;
+    byte _intFeedIgnitionP = 70;
+    byte _intFeedHeatWorkS = 1;
+    byte _intFeedHeatDelayS = 8;
+    byte _intFeedHeatP = 70;
     byte _intFeedIdleWorkS = 1;
     byte _intFeedIdleDelayS = 160;
-    byte _intFeedIdleP = 50;
+    byte _intFeedIdleP = 70;
     byte _flFeedAmpsRev = 55; 
     byte _flFeedAmpsMax = 80; 
 
@@ -56,7 +56,7 @@ struct BurnerConfigData {
     byte _intFanHeatP = 70;
     byte _intFanIdleWorkS = 5;  
     byte _intFanIdleOnP = 35;        //if fan never turned off in idle then use this to kick start the fan, e.g > 25%
-    byte _intFanIdleOffP = 10;       //if > 0 then never stop the fan in idle, used if smoke is blowing back without fan
+    byte _intFanIdleOffP = 12;       //if > 0 then never stop the fan in idle, used if smoke is blowing back without fan
     byte _intFanCleanWorkS = 30;     
     byte _intFanCleanP = 100;        
 
