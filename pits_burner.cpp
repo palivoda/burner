@@ -88,12 +88,12 @@ void PitsBurner::_readSensors() {
   //battery level reading
   _intBattDVolts = (byte)roundf(_vDivVin(5500, 2200, _pinBattery)*10); //R2 actually is 2200ohm, but calibrated value is different.  
   _intBattDVolts += 10; //diode 1N1007 in 12 input reduces by 10dcV
-  if (_intBattDVolts > cfg.getBattLevel(P100)) setBattLevel(CHARGE);
-  else if (_intBattDVolts > cfg.getBattLevel(P80)) setBattLevel(P100);
-  else if (_intBattDVolts > cfg.getBattLevel(P60)) setBattLevel(P80);
-  else if (_intBattDVolts > cfg.getBattLevel(P40)) setBattLevel(P60);
-  else if (_intBattDVolts > cfg.getBattLevel(P20)) setBattLevel(P40);
-  else if (_intBattDVolts > cfg.getBattLevel(P0)) setBattLevel(P20);
+  if (_intBattDVolts >= cfg.getBattLevel(P100)) setBattLevel(CHARGE);
+  else if (_intBattDVolts >= cfg.getBattLevel(P80)) setBattLevel(P100);
+  else if (_intBattDVolts >= cfg.getBattLevel(P60)) setBattLevel(P80);
+  else if (_intBattDVolts >= cfg.getBattLevel(P40)) setBattLevel(P60);
+  else if (_intBattDVolts >= cfg.getBattLevel(P20)) setBattLevel(P40);
+  else if (_intBattDVolts >= cfg.getBattLevel(P0)) setBattLevel(P20);
   else setBattLevel(P0);
 
   logme(F("&ms=%d&M=%d&CurT=%d&ExhT=%d&Flm=%d&FlmReq=%d&NoFlm=%d&FeedT=%d&FeedA=%d&Fuel=%d&FuelCm=%d&Bat=%d&BatV=%d&Alm=%d"), 
