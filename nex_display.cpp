@@ -238,8 +238,8 @@ void NexDisplay::onSaveClick()
         cfg.setFanIgnitionOnP(_rv[3]);
         cfg.setFanIgnitionOffP(_rv[4]);
         cfg.setFanHeatP(_rv[5]);
-        cfg.setFanIdleOnP(_rv[6]);
-        cfg.setFanIdleWorkS(_rv[7]);
+        cfg.setFanIdleWorkS(_rv[6]);
+        cfg.setFanIdleOnP(_rv[7]);
         cfg.setFanIdleOffP(_rv[8]);
         cfg.setFanCleanWorkS(_rv[9]);  
         cfg.setFanCleanP(_rv[10]);  
