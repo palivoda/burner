@@ -353,7 +353,7 @@ byte BurnerConfig::getFanCleanP() {
   return _data._intFanCleanP;
 }
 
-void BurnerConfig::setFanCleanWorkS(byte v) {
+void BurnerConfig::setFanCleanWorkS(short v) {
     #ifdef _BURNER_CONFIG_DEBUG
       Serial.print(F("FanCleanWorkS: "));
       Serial.println(v);
@@ -361,7 +361,7 @@ void BurnerConfig::setFanCleanWorkS(byte v) {
     _data._intFanCleanWorkS = v;
 } 
 
-byte BurnerConfig::getFanCleanWorkS() {
+short BurnerConfig::getFanCleanWorkS() {
   return _data._intFanCleanWorkS;
 }
 

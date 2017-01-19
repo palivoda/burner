@@ -57,7 +57,7 @@ struct BurnerConfigData {
     byte _intFanIdleWorkS = 5;  
     byte _intFanIdleOnP = 35;        //if fan never turned off in idle then use this to kick start the fan, e.g > 25%
     byte _intFanIdleOffP = 12;       //if > 0 then never stop the fan in idle, used if smoke is blowing back without fan
-    byte _intFanCleanWorkS = 30;     
+    short _intFanCleanWorkS = 600;     
     byte _intFanCleanP = 100;        
 
     //ignition page
@@ -155,8 +155,8 @@ class BurnerConfig {
     byte getFanIdleOnP();
     void setFanIdleOffP(byte);
     byte getFanIdleOffP();
-    void setFanCleanWorkS(byte); 
-    byte getFanCleanWorkS();
+    void setFanCleanWorkS(short); 
+    short getFanCleanWorkS();
     void setFanCleanP(byte); 
     byte getFanCleanP();
     

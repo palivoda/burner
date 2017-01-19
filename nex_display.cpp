@@ -173,12 +173,13 @@ void NexDisplay::refresh() {
       }
       switch (burner.getAlarmStatus()) {
         case ALARM_OK: break;
+        case ALARM_MANUAL: state += F(": Manual"); break;
         case ALARM_TEMPDROP: state += F(": Temp. drop"); break;
         case ALARM_NOFLAME: state += F(": No flame"); break;
         case ALARM_IGNITION_FAILED: state += F(": Ignition failed"); break;
         case ALARM_OVERHEAT: state += F(": Overheat"); break;
         case ALARM_OVERHEAT_FEED: state += F(": Feed temp"); break;
-        case ALARM_MANUAL: state += F(": Manual"); break;
+        case ALARM_FEED_STUCK: state += F(": Feed stuck"); break;
       }
       __nxSendString(pMain, F("state"), state.c_str());
     
